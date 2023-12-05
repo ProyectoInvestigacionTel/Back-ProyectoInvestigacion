@@ -1,0 +1,26 @@
+Django==4.2.4
+django-cors-headers==4.2.0
+djangorestframework==3.14.0
+
+# interactuar con postgrres
+psycopg2-binary==2.9.7
+
+# api con swagger
+drf-yasg == 1.21.7
+
+gunicorn == 20.1.0
+
+# jwt
+djangorestframework-simplejwt == 5.2.2
+
+# docker
+docker == 6.1.3
+
+
+#white noise static
+whitenoise == 6.5.0
+
+
+#diseño panel admin
+
+django-unfold == 0.11.0

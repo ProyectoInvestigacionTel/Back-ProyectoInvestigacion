@@ -1,0 +1,26 @@
+
+FROM python:3.9
+
+# Crea un grupo 'appgroup' y un usuario 'appuser'
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+
+
+WORKDIR /app
+
+# Cambia los permisos del directorio /app
+RUN chown -R appuser:appgroup /app
+
+
+RUN pip install docker
+
+
+RUN mkdir /app/temp
+
+# Cambia los permisos del directorio /app/temp
+RUN chown -R appuser:appgroup /app/temp
+
+
+USER appuser
+
+
+CMD ["tail", "-f", "/dev/null"]
