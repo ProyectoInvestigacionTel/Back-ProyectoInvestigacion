@@ -16,7 +16,7 @@ class UsuarioPersonalizadoAdmin(ModelAdmin):
     search_fields = ("email", "nombre")
     list_filter = ("is_active", "is_staff", "is_superuser")
     fieldsets = (
-        (None, {"fields": ("id_usuario","email", "nombre", "password")}),
+        (None, {"fields": ("id_usuario", "email", "nombre", "password")}),
         ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "roles")}),
     )
     add_fieldsets = (

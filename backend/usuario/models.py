@@ -4,7 +4,7 @@ from django.db import models
 
 class Rol(models.Model):
     ESTUDIANTE = "ESTUDIANTE"
-        
+    PROFESOR = "PROFESOR"
     ADMIN = "ADMIN"
     AYUDANTE = "AYUDANTE"
     COORDINADOR = "COORDINADOR"
@@ -25,7 +25,7 @@ class Rol(models.Model):
 
 
 class UsuarioPersonalizadoManager(BaseUserManager):
-    def create_user(self, id_usuario, email, nombre, password=None, roles=[]):
+    def create_user(self, id_usuario, email, nombre, password=None):
         if UsuarioPersonalizado.objects.filter(id_usuario=id_usuario).exists():
             raise ValueError("Un usuario con este id_usuario ya existe")
         if not email:
@@ -37,12 +37,13 @@ class UsuarioPersonalizadoManager(BaseUserManager):
         user = self.model(email=email, nombre=nombre, id_usuario=id_usuario)
         user.set_password(password)
         user.save(using=self._db)
-        for rol in roles:
-            user.roles.add(rol)
         return user
 
-    def create_superuser(self, id_usuario, email, nombre, password=None, roles=[]):
-        user = self.create_user(id_usuario, email, nombre, password, roles=[5])
+    def create_superuser(self, id_usuario, email, nombre, password=None):
+        admin_role = Rol.objects.get(nombre=Rol.ADMIN)
+
+        user = self.create_user(id_usuario, email, nombre, password)
+        user.roles.add(admin_role)
         user.is_superuser = True
         user.is_staff = True
         user.save(using=self._db)

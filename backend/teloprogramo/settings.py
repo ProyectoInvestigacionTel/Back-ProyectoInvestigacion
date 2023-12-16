@@ -11,7 +11,11 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
+from dotenv import load_dotenv
 import os
+
+load_dotenv()
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -91,20 +95,15 @@ WSGI_APPLICATION = "teloprogramo.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "NAME": "mydb",
-        "USER": "myuser",
-        "PASSWORD": "mypass",
-        "HOST": "database",
+        "NAME": os.getenv("DB_NAME"),
+        "USER": os.getenv("DB_USER"),
+        "PASSWORD": os.getenv("DB_PASS"),
+        "HOST": os.getenv("DB_HOST"),
         "PORT": "5432",
     }
 }
 
-AUTH_USER_MODEL = "usuario.UsuarioPersonalizado"
-
-
-# Password validation
-# https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
-
+# Password validation and user
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
@@ -119,38 +118,31 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
+AUTH_USER_MODEL = "usuario.UsuarioPersonalizado"
+LOGIN_URL = "/admin/login/"
 
 
 # Internationalization
-# https://docs.djangoproject.com/en/4.2/topics/i18n/
-
-LANGUAGE_CODE = "en-us"
-
+LANGUAGE_CODE = "es-cl"
 TIME_ZONE = "UTC"
-
 USE_I18N = True
-
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/4.2/howto/static-files/
-
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
+# Media files
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
 
 # Default primary key field type
-# https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
-
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
+# Django Rest Framework
 CORS_ALLOWED_ORIGINS = ["http://localhost:3000"]
-
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -161,10 +153,10 @@ REST_FRAMEWORK = {
 }
 
 
+# Simple JWT
 SIMPLE_JWT = {
     "USER_ID_FIELD": "id_usuario",
 }
-
 
 SWAGGER_SETTINGS = {
     "DEFAULT_API_URL": "http://localhost:8001/api",
@@ -178,5 +170,3 @@ SWAGGER_SETTINGS = {
     },
     "USE_SESSION_AUTH": False,
 }
-
-LOGIN_URL = "/admin/login/"

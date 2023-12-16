@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Estudiante, Docente, UsuarioPersonalizado, Rol
+from .models import *
 
 
 class RolSerializer(serializers.ModelSerializer):

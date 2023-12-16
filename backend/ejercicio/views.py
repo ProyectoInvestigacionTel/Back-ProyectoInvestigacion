@@ -1,60 +1,20 @@
-from datetime import datetime
 import json
-import re
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.views import APIView
-from django.core.files.base import ContentFile
-from usuario.models import UsuarioPersonalizado
-from .models import (
-    DetalleIntento,
-    Ejercicio,
-    IntentoEjercicio,
-    DetalleRetroalimentacion,
-)
-from .serializers import (
-    DetalleRetroalimentacionSerializer,
-    EjercicioSerializerCreate,
-    EjercicioSerializerView,
-    IntentoEjercicioSerializer,
-    DetalleIntentoSerializer,
-    IntentoEjercicioSerializer,
-    DetalleIntentoSerializer,
-    ConversacionSerializer,
-)
+from usuario.models import *
+from .models import *
+from .serializers import *
 from rest_framework.response import Response
 from rest_framework import status
-from dockerfunctions import run_code_in_container
-from django.db.models import Q
 from django.db import transaction
 from drf_yasg import openapi
-from django.core.files.storage import default_storage
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.conf import settings
-
-
-def check_imports(code: str) -> bool:
-    direct_imports = re.findall(r"\bimport (\w+)", code)
-    from_imports = re.findall(r"\bfrom (\w+)", code)
-    return bool(direct_imports or from_imports)
-
-
-def add_message_to_conversation(detalle, remitente, mensaje):
-    with detalle.conversacion_file.open("r") as file:
-        contenido_actual = json.load(file)
-
-    fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    nuevo_mensaje = {"fecha": fecha_actual, "remitente": remitente, "mensaje": mensaje}
-    contenido_actual.append(nuevo_mensaje)
-
-    # Borrar el archivo existente antes de guardar el nuevo
-    detalle.conversacion_file.delete(save=False)
-
-    # Guardar el nuevo archivo
-    detalle.conversacion_file.save(
-        detalle.conversacion_file.name, ContentFile(json.dumps(contenido_actual))
-    )
+from .aux_func_views import *
+from django.db.models.functions import Rank
+from django.db.models import Count, Sum, Max, Q, Window, F
 
 
 class EjercicioView(APIView):
@@ -189,7 +149,7 @@ class EjercicioCreateView(APIView):
         if serializer.is_valid():
             dificultad = serializer.validated_data.get("dificultad")
 
-            if dificultad not in ["Fácil", "Media", "Avanzada"]:
+            if dificultad not in ["Facil", "Media", "Avanzada"]:
                 return Response(
                     {"error": "Dificultad no válida."},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -197,7 +157,8 @@ class EjercicioCreateView(APIView):
 
             serializer.save()
             return Response(
-                "Ejercico creado correctamente", status=status.HTTP_201_CREATED
+                {"message": "Ejercico creado correctamente"},
+                status=status.HTTP_201_CREATED,
             )
         return Response(
             "Error al crear el ejercicio", status=status.HTTP_400_BAD_REQUEST
@@ -259,35 +220,35 @@ class IntentoEjercicioCreateView(APIView):
         feedback_inicial = request.data.get("feedback_inicial", "")
         usuario = UsuarioPersonalizado.objects.get(pk=user.id_usuario)
 
-        if self.verify_imports(codigo):
+        if verify_imports(codigo):
             return Response(
                 {"error": "Librerías importadas detectadas"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        ejercicio_instance = self.get_ejercicio_instance(request.data["id_ejercicio"])
+        ejercicio_instance = get_ejercicio_instance(request.data["id_ejercicio"])
         if ejercicio_instance is None:
             return Response(
                 {"error": "Ejercicio no encontrado"}, status=status.HTTP_404_NOT_FOUND
             )
 
-        intento_existente = self.get_intento_existente(request, user)
+        intento_existente = get_intento_existente(request, user)
 
-        casos_de_uso = self.load_casos_de_uso(ejercicio_instance.casos_de_uso_file.path)
+        casos_de_uso = load_casos_de_uso(ejercicio_instance.casos_de_uso_file.path)
         print(casos_de_uso, flush=True)
-        resultado = self.execute_code(codigo)
+        resultado = execute_code(codigo)
         if "Error" in resultado:
             return Response({"error": resultado}, status=status.HTTP_400_BAD_REQUEST)
 
         outputs_esperados = [str(caso["output"]).strip() for caso in casos_de_uso]
 
         resultado_limpio = [linea.strip() for linea in resultado.splitlines()]
-        nota, resuelto = self.compare_outputs_and_calculate_score(
+        nota, resuelto = compare_outputs_and_calculate_score(
             outputs_esperados, resultado_limpio
         )
-        results_json = self.generate_result_json(outputs_esperados, resultado_limpio)
+        results_json = generate_result_json(outputs_esperados, resultado_limpio)
 
-        intento_instance = self.update_intento(
+        intento_instance = update_intento(
             intento_existente, request, ejercicio_instance, user, nota, resuelto
         )
         if not intento_instance:
@@ -296,7 +257,7 @@ class IntentoEjercicioCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        detalle_instance = self.create_or_update_detalle_intento(
+        detalle_instance = create_or_update_detalle_intento(
             intento_instance, nota, resuelto
         )
         if detalle_instance is None:
@@ -305,7 +266,7 @@ class IntentoEjercicioCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        retro_instance = self.create_or_update_retroalimentacion(
+        retro_instance = create_or_update_retroalimentacion(
             detalle_instance,
             feedback_inicial,
             codigo,
@@ -318,7 +279,7 @@ class IntentoEjercicioCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        self.update_resuelto_state_and_nota(detalle_instance, usuario, nota)
+        update_resuelto_state_and_nota(detalle_instance, usuario, nota)
 
         return Response(
             {
@@ -329,141 +290,8 @@ class IntentoEjercicioCreateView(APIView):
             status=status.HTTP_201_CREATED,
         )
 
-    def verify_imports(self, codigo):
-        imports_detected = check_imports(codigo)
-        return imports_detected
 
-    def get_ejercicio_instance(self, id_ejercicio):
-        try:
-            return Ejercicio.objects.get(pk=id_ejercicio)
-        except Ejercicio.DoesNotExist:
-            return None
-
-    def generate_result_json(self, outputs_esperados, resultado_limpio):
-        results = []
-        max_length = max(len(outputs_esperados), len(resultado_limpio))
-
-        for i in range(max_length):
-            esperado = outputs_esperados[i] if i < len(outputs_esperados) else None
-            real = resultado_limpio[i] if i < len(resultado_limpio) else None
-
-            result = {"output": esperado, "obtenido": real, "estado": esperado == real}
-            results.append(result)
-        return json.dumps(results)
-
-    def get_intento_existente(self, request, user):
-        return IntentoEjercicio.objects.filter(
-            id_ejercicio=request.data["id_ejercicio"], id_usuario=user.id_usuario
-        ).first()
-
-    def load_casos_de_uso(self, casos_de_uso_path):
-        with default_storage.open(casos_de_uso_path, "r") as f:
-            data = json.load(f)
-            if not isinstance(data, list):
-                raise ValueError("El archivo JSON no contiene una lista válida.")
-            return data
-
-    def execute_code(self, codigo):
-        print("Llamando a run_code_in_container codigo: ", codigo, flush=True)
-        resultado = run_code_in_container(codigo)
-        print("Resultado:", resultado, flush=True)
-        return resultado
-
-    def compare_outputs_and_calculate_score(self, outputs_esperados, resultado_limpio):
-        outputs_correctos = sum(
-            [
-                esperado == real
-                for esperado, real in zip(outputs_esperados, resultado_limpio)
-            ]
-        )
-        total_outputs = len(outputs_esperados)
-        nota = (outputs_correctos / total_outputs) * 100
-        resuelto = outputs_correctos == total_outputs
-        return nota, resuelto
-
-    def update_intento(
-        self, intento_existente, request, ejercicio_instance, user, nota, resuelto
-    ):
-        if intento_existente:
-            intento_existente.intentos += 1
-            intento_existente.nota = nota
-            intento_existente.tiempo = request.data["tiempo"]
-            intento_existente.resuelto = resuelto
-            intento_existente.save()
-            return intento_existente
-        else:
-            intento_data = {
-                "id_ejercicio": ejercicio_instance.id_ejercicio,
-                "id_usuario": user.id_usuario,
-                "intentos": 1,
-                "nota": nota,
-                "tiempo": request.data["tiempo"],
-                "resuelto": resuelto,
-            }
-            intento_serializer = IntentoEjercicioSerializer(data=intento_data)
-            if intento_serializer.is_valid():
-                intento_serializer.save()
-                return intento_serializer.instance
-            else:
-                return None
-
-    def create_or_update_detalle_intento(self, intento_existente, nota, resuelto):
-        detalle_data = {
-            "id_intento_general": intento_existente.id_intento_general,
-            "fecha": datetime.now(),
-            "nota": nota,
-            "resuelto": resuelto,
-            "retroalimentacion": 1 if not resuelto else 0,
-        }
-        detalle_serializer = DetalleIntentoSerializer(data=detalle_data)
-        if detalle_serializer.is_valid():
-            return detalle_serializer.save()
-        else:
-            return None
-
-    def create_or_update_retroalimentacion(
-        self, detalle_instance, feedback_inicial, codigo, id_ejercicio, resultado_file
-    ):
-        retro_inicial = [
-            {
-                "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "remitente": "CHATGPT",
-                "mensaje": feedback_inicial,
-            }
-        ]
-        retro_serializer = DetalleRetroalimentacionSerializer(
-            data={"id_intento": detalle_instance.id_intento}
-        )
-        if retro_serializer.is_valid():
-            retro_instance = retro_serializer.save()
-            codigo_file_name = (
-                f"codigo_Re{retro_instance.id_retroalimentacion}_Ej{id_ejercicio}.txt"
-            )
-            conversacion_file_name = f"conversacion_Re{retro_instance.id_retroalimentacion}_Ej{id_ejercicio}.json"
-            resultado_file_name = f"resultado_Re{retro_instance.id_retroalimentacion}_Ej{id_ejercicio}.json"
-
-            retro_instance.codigo_file.save(codigo_file_name, ContentFile(codigo))
-            retro_instance.conversacion_file.save(
-                conversacion_file_name, ContentFile(json.dumps(retro_inicial))
-            )
-            retro_instance.resultado_file.save(
-                resultado_file_name, ContentFile(resultado_file)
-            )
-
-            retro_instance.save()
-            return retro_instance
-        else:
-            return None
-
-    def update_resuelto_state_and_nota(self, detalle_instance, usuario, nota):
-        if detalle_instance.resuelto:
-            detalle_instance.nota = nota
-            usuario.monedas += 10
-            usuario.save()
-            detalle_instance.save()
-
-
-class EjerciciosPorUsuarioView(APIView):
+class InfoEjerciciosPorUsuarioView(APIView):
     if settings.DEVELOPMENT_MODE:
         authentication_classes = []
         permission_classes = []
@@ -475,55 +303,58 @@ class EjerciciosPorUsuarioView(APIView):
         data = []
 
         try:
-            usuario = UsuarioPersonalizado.objects.get(pk=id_usuario)
-        except UsuarioPersonalizado.DoesNotExist().DoesNotExist:
+            UsuarioPersonalizado.objects.get(pk=id_usuario)
+        except UsuarioPersonalizado.DoesNotExist:
             return Response(
                 {"error": "Usuario no encontrado."}, status=status.HTTP_404_NOT_FOUND
             )
+        ejercicios = Ejercicio.objects.filter(id_usuario=id_usuario)
 
-        intentos_generales = IntentoEjercicio.objects.filter(
-            id_usuario=id_usuario
-        ).distinct("id_ejercicio")
-
-        for intento_general in intentos_generales:
+        for ejercicio in ejercicios:
+            nota_maxima = DetalleIntento.objects.filter(
+                id_intento_general__id_ejercicio=ejercicio
+            ).aggregate(Max("nota"))["nota__max"]
             ejercicio_data = {
-                "id_ejercicio": intento_general.id_ejercicio.id_ejercicio,
-                "asignatura": Ejercicio.objects.get(
-                    pk=intento_general.id_ejercicio.id_ejercicio
-                ).asignatura,
+                "id_ejercicio": ejercicio.id_ejercicio,
+                "fecha_creacion": ejercicio.fecha,
+                "dificultad": ejercicio.dificultad,
+                "contenidos": ejercicio.contenidos,
+                "lenguaje": ejercicio.lenguaje,
+                "asignatura": ejercicio.asignatura,
+                "puntaje_maximo": ejercicio.puntaje,
+                "puntaje_obtenido": nota_maxima if nota_maxima else "No resuelto",
                 "intentos": {},
             }
+            intentos_generales = IntentoEjercicio.objects.filter(
+                id_usuario=id_usuario, id_ejercicio=ejercicio.id_ejercicio
+            ).distinct("id_ejercicio")
+            for intento_general in intentos_generales:
+                detalles_intentos = DetalleIntento.objects.filter(
+                    id_intento_general=intento_general
+                )
 
-            detalles_intentos = DetalleIntento.objects.filter(
-                id_intento_general=intento_general
-            )
+                for index, detalle_intento in enumerate(detalles_intentos, start=1):
+                    # Obtener detalles de retroalimentación
+                    detalle_retro = DetalleRetroalimentacion.objects.filter(
+                        id_intento=detalle_intento
+                    ).first()
 
-            for index, detalle_intento in enumerate(detalles_intentos, start=1):
-                # Obtener detalles de retroalimentación
-                detalle_retro = DetalleRetroalimentacion.objects.filter(
-                    id_intento=detalle_intento
-                ).first()
+                    # Leer el código y la conversación desde los archivos si están presentes
+                    if detalle_retro:
+                        if detalle_retro.codigo_file and detalle_retro.codigo_file:
+                            with detalle_retro.codigo_file.open("r") as file:
+                                codigo = file.read()
+                            with detalle_retro.conversacion_file.open("r") as file:
+                                conversacion = json.load(file)
 
-                # Leer el código y la conversación desde los archivos si están presentes
-                codigo = ""
-                conversacion = []
-                if detalle_retro:
-                    if detalle_retro.codigo_file:
-                        with detalle_retro.codigo_file.open("r") as file:
-                            codigo = file.read()
-
-                    if detalle_retro.conversacion_file:
-                        with detalle_retro.conversacion_file.open("r") as file:
-                            conversacion = json.load(file)
-
-                ejercicio_data["intentos"][f"intento_{index}"] = {
-                    "nota": detalle_intento.nota,
-                    "fecha_ingreso": detalle_intento.fecha.strftime(
-                        "%Y-%m-%d %H:%M:%S"
-                    ),
-                    "codigo": codigo,
-                    "conversacion": conversacion,
-                }
+                    ejercicio_data["intentos"][f"intento_{index}"] = {
+                        "nota": detalle_intento.nota,
+                        "fecha_ingreso": detalle_intento.fecha.strftime(
+                            "%Y-%m-%d %H:%M:%S"
+                        ),
+                        "codigo": codigo,
+                        "conversacion": conversacion,
+                    }
 
             data.append(ejercicio_data)
 
@@ -691,10 +522,100 @@ class DetallePorEjercicio(APIView):
                         )
 
             return Response(lista, status=status.HTTP_200_OK)
-
+        except UsuarioPersonalizado.DoesNotExist:
+            return Response(
+                {"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND
+            )
+        except IntentoEjercicio.DoesNotExist:
+            return Response(
+                {"error": "Intento de ejercicio no encontrado"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         except Exception as e:
             print(str(e), flush=True)
             return Response(
                 {"error": "Ocurrió un error inesperado"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class AsignaturaInfoView(APIView):
+    if settings.DEVELOPMENT_MODE:
+        authentication_classes = []
+        permission_classes = []
+    else:
+        authentication_classes = [JWTAuthentication]
+        permission_classes = [IsAuthenticated]
+
+    def get(self, request, asignatura):
+        try:
+            ejercicios_por_asignatura = Ejercicio.objects.filter(asignatura=asignatura)
+
+            # Agregar información por contenidos
+            ejercicios_por_contenidos = ejercicios_por_asignatura.values(
+                "contenidos"
+            ).annotate(cantidad=Count("id_ejercicio"))
+             # Total de ejercicios en la asignatura
+            total_ejercicios = ejercicios_por_asignatura.count()
+
+            # Agregar información por dificultad
+            dificultades = ejercicios_por_asignatura.values('dificultad').annotate(cantidad=Count('id_ejercicio'))
+
+            # Calcular porcentajes por dificultad
+            porcentajes_por_dificultad = {}
+            for dificultad in dificultades:
+                porcentaje = (dificultad['cantidad'] / total_ejercicios) * 100 if total_ejercicios > 0 else 0
+                porcentajes_por_dificultad[dificultad['dificultad']] = porcentaje
+            
+            data = {
+                "ejercicios_por_contenidos": list(ejercicios_por_contenidos),
+                "total_ejercicios_generados": ejercicios_por_asignatura.count(),
+                "total_ejercicios_realizados": 0,
+                "porcentaje_realizados": 0,
+                "porcentajes_por_dificultad": porcentajes_por_dificultad,
+            }
+
+            # Calcular ejercicios realizados
+            for ejercicios_de_asignatura in ejercicios_por_asignatura:
+                intentos_por_asignatura = IntentoEjercicio.objects.filter(
+                    id_ejercicio=ejercicios_de_asignatura.id_ejercicio
+                )
+                data["total_ejercicios_realizados"] += intentos_por_asignatura.count()
+                
+            # Calcular el porcentaje de ejercicios realizados
+            if data["total_ejercicios_generados"] > 0:
+                data["porcentaje_realizados"] = (
+                    data["total_ejercicios_realizados"]
+                    / data["total_ejercicios_generados"]
+                ) * 100
+
+            # Calcular la suma de puntajes por estudiante y crear un ranking
+            ranking = (
+                IntentoEjercicio.objects.filter(id_ejercicio__asignatura=asignatura)
+                .values("id_usuario")
+                .annotate(total_puntaje=Sum("id_ejercicio__puntaje"))
+                .annotate(
+                    ranking=Window(
+                        expression=Rank(), order_by=F("total_puntaje").desc()
+                    )
+                )
+            )
+            usuario = UsuarioPersonalizado.objects.get(
+                id_usuario=ranking[0]["id_usuario"]
+            )
+            data["id_usuario"] = usuario.id_usuario
+            data["email"] = usuario.email
+            data["nombre"] = usuario.nombre
+            data["total_puntaje"] = ranking[0]["total_puntaje"]
+            data["ranking"] = ranking[0]["ranking"]
+
+            return Response(data, status=status.HTTP_200_OK)
+        except Ejercicio.DoesNotExist:
+            return Response(
+                {"error": "Asignatura no encontrada"}, status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": "Ocurrió un error inesperado: " + str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

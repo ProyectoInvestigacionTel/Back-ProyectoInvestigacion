@@ -66,6 +66,12 @@ class Ejercicio(models.Model):
             ("casos_de_uso_file", "casos_de_uso_"),
         ]:
             file_field = getattr(self, field)
+            if not file_field:
+                continue
+
+            with file_field.open() as f:
+                content = ContentFile(f.read())
+
             temp_path = file_field.path
 
             # extensión del archivo
@@ -77,9 +83,13 @@ class Ejercicio(models.Model):
             new_path = os.path.join(new_directory, desired_filename)
 
             # se mueve el archivo.
-            content = ContentFile(file_field.read())
             default_storage.save(new_path, content)
-            default_storage.delete(temp_path)
+
+            try:
+                # se intenta eliminar el archivo temporal
+                default_storage.delete(temp_path)
+            except Exception as e:
+                print(f"Error al eliminar el archivo temporal: {e}")
 
             # almacena la nueva ruta para actualizarla luego.
             paths_to_update[field] = new_path

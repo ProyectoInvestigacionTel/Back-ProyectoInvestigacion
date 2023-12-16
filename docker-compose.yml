@@ -12,26 +12,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - database
-  frontend:
-    image: node:14
-    working_dir: /app
-    volumes:
-      - ./frontend/web:/app
-    command: sh -c "npm install && npm run build"
-
-  nginx:
-    image: nginx:latest
-    container_name: nginx
-    ports:
-      - 80:80
-    volumes:
-      - ./frontend/web/build:/usr/share/nginx/html 
-      - ./nginx/nginx-setup.conf:/etc/nginx/conf.d/nginx.conf 
-
-    depends_on:
-      - backend
-      - frontend
-
   database:
     image: postgres:15
     restart: always

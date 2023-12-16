@@ -1,10 +1,5 @@
 from django.urls import path
-from .views import (
-    UsuarioViewPOSTestudiante,
-    UsuarioViewPOSTdocente,
-    UsuarioViewGET,
-    LoginUser,
-)
+from .views import *
 from rest_framework_simplejwt.views import TokenRefreshView
 from django.views.decorators.csrf import csrf_exempt
 

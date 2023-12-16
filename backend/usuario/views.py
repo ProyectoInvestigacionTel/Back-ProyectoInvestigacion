@@ -1,10 +1,10 @@
+from .aux_func_views import generate_random_password
 from .models import UsuarioPersonalizado, Docente, Estudiante, Rol
 from .serializers import (
     EstudiantePOSTSerializer,
     DocentePOSTSerializer,
     EstudianteGETSerializer,
     DocenteGETSerializer,
-    CustomTokenObtainSerializer,
     UsuarioPersonalizadoGETSerializer,
 )
 from rest_framework.views import APIView
@@ -14,11 +14,8 @@ from django.http import Http404
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework_simplejwt.tokens import RefreshToken
 from .backend import authenticateUser
-from rest_framework import status, serializers
-from drf_yasg import openapi
+from rest_framework import status
 from rest_framework.parsers import JSONParser
-import string
-import random
 from django.db import transaction
 
 
@@ -38,7 +35,7 @@ class UsuarioViewPOSTestudiante(APIView):
             )
             usuario.roles.add(rol_estudiante)
 
-            estudiante = Estudiante.objects.create(
+            Estudiante.objects.create(
                 usuario=usuario,
                 asignatura=serializer.validated_data["asignatura"],
                 paralelo=serializer.validated_data["paralelo"],
@@ -79,7 +76,7 @@ class UsuarioViewPOSTdocente(APIView):
                 rol_obj = Rol.objects.get(nombre=rol_nombre)
                 usuario.roles.add(rol_obj)
 
-            docente = Docente.objects.create(
+            Docente.objects.create(
                 usuario=usuario,
                 asignatura=serializer.validated_data["asignatura"],
             )
@@ -204,9 +201,3 @@ def authenticate_or_create_user(data):
             Docente.objects.create(usuario=user, asignatura=asignatura)
 
     return user
-
-
-def generate_random_password(length=8):
-    characters = string.ascii_letters + string.digits + string.punctuation
-    password = "".join(random.choice(characters) for i in range(length))
-    return password
