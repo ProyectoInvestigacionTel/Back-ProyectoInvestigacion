@@ -1,3 +1,4 @@
+from datetime import timedelta
 import json
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -15,6 +16,7 @@ from django.conf import settings
 from .aux_func_views import *
 from django.db.models.functions import Rank
 from django.db.models import Count, Sum, Max, Q, Window, F
+from django.utils import timezone
 
 
 class EjercicioView(APIView):
@@ -614,6 +616,37 @@ class AsignaturaInfoView(APIView):
             return Response(
                 {"error": "Asignatura no encontrada"}, status=status.HTTP_404_NOT_FOUND
             )
+        except Exception as e:
+            return Response(
+                {"error": "Ocurrió un error inesperado: " + str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+
+
+class UltimoEjercicioView(APIView):
+    if settings.DEVELOPMENT_MODE:
+        authentication_classes = []
+        permission_classes = []
+    else:
+        authentication_classes = [JWTAuthentication]
+        permission_classes = [IsAuthenticated]
+
+    def get(self, request, id_usuario):
+        try:
+            ultimo_ejercicio = Ejercicio.objects.filter(id_usuario=id_usuario).order_by('-fecha').first()
+
+            if ultimo_ejercicio:
+                tiempo_actual = timezone.now()
+                diferencia_tiempo = tiempo_actual - ultimo_ejercicio.fecha
+
+                resultado = diferencia_tiempo > timedelta(days=1)
+            else:
+                resultado = True
+
+            return Response({"message": resultado}, status=status.HTTP_200_OK)
+
         except Exception as e:
             return Response(
                 {"error": "Ocurrió un error inesperado: " + str(e)},

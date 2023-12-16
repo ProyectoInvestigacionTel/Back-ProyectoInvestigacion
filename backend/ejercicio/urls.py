@@ -10,7 +10,7 @@ urlpatterns = [
     ),
     path("intento", IntentoEjercicioCreateView.as_view(), name="registrar_intento"),
     path(
-        "ejercicios_por_usuario/<int:id_usuario>",
+        "ejercicios_por_usuario/<str:id_usuario>",
         InfoEjerciciosPorUsuarioView.as_view(),
         name="ejercicios_por_usuario",
     ),
@@ -35,9 +35,10 @@ urlpatterns = [
         name="conversacion",
     ),
     path(
-        "detalle_por_ejercicio/<int:id_ejercicio>/<int:id_user>",
+        "detalle_por_ejercicio/<int:id_ejercicio>/<str:id_user>",
         DetallePorEjercicio.as_view(),
         name="detalle_por_ejercicio",
     ),
-    path('asignatura_info/<str:asignatura>', AsignaturaInfoView.as_view(), name='asignatura_info')
+    path('asignatura_info/<str:asignatura>', AsignaturaInfoView.as_view(), name='asignatura_info'),
+    path('crear_ejercicio/<str:id_usuario>', UltimoEjercicioView.as_view(), name='crear_ejercicio')
 ]
