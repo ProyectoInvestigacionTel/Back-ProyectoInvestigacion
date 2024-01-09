@@ -557,18 +557,24 @@ class AsignaturaInfoView(APIView):
             ejercicios_por_contenidos = ejercicios_por_asignatura.values(
                 "contenidos"
             ).annotate(cantidad=Count("id_ejercicio"))
-             # Total de ejercicios en la asignatura
+            # Total de ejercicios en la asignatura
             total_ejercicios = ejercicios_por_asignatura.count()
 
             # Agregar información por dificultad
-            dificultades = ejercicios_por_asignatura.values('dificultad').annotate(cantidad=Count('id_ejercicio'))
+            dificultades = ejercicios_por_asignatura.values("dificultad").annotate(
+                cantidad=Count("id_ejercicio")
+            )
 
             # Calcular porcentajes por dificultad
             porcentajes_por_dificultad = {}
             for dificultad in dificultades:
-                porcentaje = (dificultad['cantidad'] / total_ejercicios) * 100 if total_ejercicios > 0 else 0
-                porcentajes_por_dificultad[dificultad['dificultad']] = porcentaje
-            
+                porcentaje = (
+                    (dificultad["cantidad"] / total_ejercicios) * 100
+                    if total_ejercicios > 0
+                    else 0
+                )
+                porcentajes_por_dificultad[dificultad["dificultad"]] = porcentaje
+
             data = {
                 "ejercicios_por_contenidos": list(ejercicios_por_contenidos),
                 "total_ejercicios_generados": ejercicios_por_asignatura.count(),
@@ -583,7 +589,7 @@ class AsignaturaInfoView(APIView):
                     id_ejercicio=ejercicios_de_asignatura.id_ejercicio
                 )
                 data["total_ejercicios_realizados"] += intentos_por_asignatura.count()
-                
+
             # Calcular el porcentaje de ejercicios realizados
             if data["total_ejercicios_generados"] > 0:
                 data["porcentaje_realizados"] = (
@@ -623,8 +629,6 @@ class AsignaturaInfoView(APIView):
             )
 
 
-
-
 class UltimoEjercicioView(APIView):
     if settings.DEVELOPMENT_MODE:
         authentication_classes = []
@@ -635,7 +639,11 @@ class UltimoEjercicioView(APIView):
 
     def get(self, request, id_usuario):
         try:
-            ultimo_ejercicio = Ejercicio.objects.filter(id_usuario=id_usuario).order_by('-fecha').first()
+            ultimo_ejercicio = (
+                Ejercicio.objects.filter(id_usuario=id_usuario)
+                .order_by("-fecha")
+                .first()
+            )
 
             if ultimo_ejercicio:
                 tiempo_actual = timezone.now()

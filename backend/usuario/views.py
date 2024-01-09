@@ -22,31 +22,31 @@ from django.db import transaction
 class UsuarioViewPOSTestudiante(APIView):
     @swagger_auto_schema(request_body=EstudiantePOSTSerializer)
     def post(self, request, *args, **kwargs):
-        usuario_data = request.data.get("usuario")
-        rol_estudiante = Rol.objects.get(nombre="Estudiante")
-
         serializer = EstudiantePOSTSerializer(data=request.data)
         if serializer.is_valid():
-            usuario_data = serializer.validated_data.pop("usuario")
-            usuario = UsuarioPersonalizado.objects.create_user(
-                email=usuario_data["email"],
-                nombre=usuario_data["nombre"],
-                password=usuario_data["password"],
-            )
-            usuario.roles.add(rol_estudiante)
+            usuario_data = serializer.validated_data.get('usuario')
+            try:
+                usuario = UsuarioPersonalizado.objects.create_user(
+                    id_usuario=usuario_data['id_usuario'],
+                    email=usuario_data['email'],
+                    nombre=usuario_data['nombre'],
+                    password=usuario_data['password'],
+                )
+                rol_estudiante = Rol.objects.get(nombre=Rol.ESTUDIANTE)
+                usuario.roles.add(rol_estudiante)
 
-            Estudiante.objects.create(
-                usuario=usuario,
-                asignatura=serializer.validated_data["asignatura"],
-                paralelo=serializer.validated_data["paralelo"],
-                semestre=serializer.validated_data["semestre"],
-            )
+                Estudiante.objects.create(
+                    usuario=usuario,
+                    asignatura=serializer.validated_data['asignatura'],
+                    paralelo=serializer.validated_data['paralelo'],
+                    semestre=serializer.validated_data['semestre'],
+                )
+                return Response({"message": "Estudiante creado correctamente"}, status=status.HTTP_201_CREATED)
 
-            return Response(status=status.HTTP_201_CREATED, data=None)
+            except ValueError as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(
-            "Error al crear el usuario Estudiante", status=status.HTTP_400_BAD_REQUEST
-        )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UsuarioViewPOSTdocente(APIView):
@@ -67,6 +67,7 @@ class UsuarioViewPOSTdocente(APIView):
         if serializer.is_valid():
             usuario_data = serializer.validated_data.pop("usuario")
             usuario = UsuarioPersonalizado.objects.create_user(
+                id_usuario=usuario_data["rol_usm"],
                 email=usuario_data["email"],
                 nombre=usuario_data["nombre"],
                 password=usuario_data["password"],
@@ -81,10 +82,14 @@ class UsuarioViewPOSTdocente(APIView):
                 asignatura=serializer.validated_data["asignatura"],
             )
 
-            return Response(status=status.HTTP_201_CREATED, data=None)
-
+            return Response(
+                {"message": "Docente creado correctamente"},
+                status=status.HTTP_201_CREATED,
+                data=None,
+            )
         return Response(
-            "Error al crear el usuario Docente", status=status.HTTP_400_BAD_REQUEST
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
 
@@ -170,7 +175,6 @@ def authenticate_or_create_user(data):
         nombre=(" ".join((nombre.split("+")))),
         password=generate_random_password(),
     )
-    print("created", created, flush=True)
 
     # Si el usuario fue creado, asignarle un rol y otros detalles
     if created:

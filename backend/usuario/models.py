@@ -17,7 +17,7 @@ class Rol(models.Model):
         (COORDINADOR, "Coordinador"),
     )
 
-    nombre = models.CharField(max_length=50, choices=ROL_OPCIONES, unique=True)
+    nombre = models.CharField(max_length=50, choices=ROL_OPCIONES)
     descripcion = models.TextField()
 
     def __str__(self):

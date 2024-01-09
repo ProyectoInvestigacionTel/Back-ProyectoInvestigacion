@@ -10,10 +10,11 @@ class RolSerializer(serializers.ModelSerializer):
 
 class UsuarioPersonalizadoPOSTSerializer(serializers.ModelSerializer):
     roles = RolSerializer(many=True)
+    rol_usm = serializers.CharField(source='id_usuario')
 
     class Meta:
         model = UsuarioPersonalizado
-        fields = ("email", "nombre", "roles", "password")
+        fields = ("rol_usm","email", "nombre", "roles", "password")
 
 
 class UsuarioPersonalizadoGETSerializer(serializers.ModelSerializer):

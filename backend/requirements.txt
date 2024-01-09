@@ -22,7 +22,6 @@ whitenoise == 6.5.0
 
 
 #diseño panel admin
-
 django-unfold == 0.11.0
 
 
