@@ -140,7 +140,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-
+'''
 # Django Rest Framework
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
@@ -148,7 +148,8 @@ CORS_ALLOWED_ORIGINS = [
     "https://10.13.13.1",
     "*",
 ]
-
+'''
+CORS_ORIGIN_ALLOW_ALL = True
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
