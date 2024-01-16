@@ -50,7 +50,7 @@ class UsuarioPersonalizadoAdmin(ModelAdmin):
 
 
 class RolAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "descripcion")
+    list_display = ("nombre",)
     search_fields = ("nombre",)
 
 

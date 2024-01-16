@@ -7,51 +7,24 @@ from django.contrib.auth import get_user_model
 class EjercicioSerializerCreate(serializers.ModelSerializer):
     enunciado_file = serializers.FileField(required=True)
     casos_de_uso_file = serializers.FileField(required=True)
+    ejemplo_file = serializers.FileField(required=True)
+    salida_file = serializers.FileField(required=True)
 
     class Meta:
         model = Ejercicio
-        fields = (
-            "id_ejercicio",
-            "fecha",
-            "id_usuario",
-            "enunciado_file",
-            "casos_de_uso_file",
-            "dificultad",
-            "contenidos",
-            "puntaje",
-            "lenguaje",
-            "asignatura",
-        )
+        exclude = ['fecha']
 
 
 class EjercicioSerializerView(serializers.ModelSerializer):
     class Meta:
         model = Ejercicio
-        fields = [
-            "id_ejercicio",
-            "fecha",
-            "id_usuario",
-            "dificultad",
-            "contenidos",
-            "puntaje",
-            "lenguaje",
-        ]
+        fields = '__all__'
 
 
 class EjercicioListSerializerAll(serializers.ModelSerializer):
     class Meta:
         model = Ejercicio
-        fields = [
-            "id_ejercicio",
-            "dificultad",
-            "puntaje",
-            "contenidos",
-            "lenguaje",
-            "asignatura",
-            "id_usuario",
-            "nombre_usuario",
-            "email_usuario",
-        ]
+        fields = '__all__'
 
 
 class IntentoEjercicioSerializer(serializers.ModelSerializer):
@@ -95,5 +68,3 @@ class MensajeSerializer(serializers.Serializer):
 
 class ConversacionSerializer(serializers.Serializer):
     mensajes = MensajeSerializer(many=True)
-
-
