@@ -17,7 +17,7 @@ from .aux_func_views import *
 from django.db.models.functions import Rank
 from django.db.models import Count, Sum, Max, Q, Window, F
 from django.utils import timezone
-
+from rest_framework.pagination import PageNumberPagination
 
 class EjercicioView(APIView):
     if settings.DEVELOPMENT_MODE:
@@ -39,21 +39,13 @@ class EjercicioView(APIView):
 
         serializer = EjercicioSerializerView(ejercicio)
 
-        enunciado_data = None
-        casos_de_uso_data = None
-
-        if ejercicio.enunciado_file:
-            with ejercicio.enunciado_file.open("r") as file:
-                enunciado_data = file.read()
-
-        if ejercicio.casos_de_uso_file:
-            with ejercicio.casos_de_uso_file.open("r") as file:
-                casos_de_uso_data = json.load(file)
         response_data = serializer.data
-        if enunciado_data:
-            response_data["enunciado"] = enunciado_data
-        if casos_de_uso_data:
-            response_data["casos_de_uso"] = casos_de_uso_data
+        response_data = get_all_ejercicios_files(ejercicio.id_ejercicio, response_data)
+
+        response_data["titulo"] = ejercicio.titulo
+        response_data["restricciones"] = ejercicio.restricciones
+
+        responde_data = formatear_datos_ejercicio(response_data)
 
         return Response(response_data, status=status.HTTP_200_OK)
 
@@ -79,6 +71,7 @@ class BuscarEjerciciosView(APIView):
         ]
     )
     def get(self, request):
+        request.query_params = formatear_entrada_ejercicio(request.query_params)
         contenidos = request.query_params.get("contenidos", None)
         dificultad = request.query_params.get("dificultad", None)
 
@@ -112,23 +105,14 @@ class BuscarEjerciciosView(APIView):
         for ejercicio in ejercicios:
             serializer = EjercicioSerializerView(ejercicio)
 
-            enunciado_data = None
-            casos_de_uso_data = None
-
-            if ejercicio.enunciado_file:
-                with ejercicio.enunciado_file.open("r") as file:
-                    enunciado_data = file.read()
-
-            if ejercicio.casos_de_uso_file:
-                with ejercicio.casos_de_uso_file.open("r") as file:
-                    casos_de_uso_data = json.load(file)
-
             ejercicio_data = serializer.data
-            if enunciado_data:
-                ejercicio_data["enunciado_file"] = enunciado_data
-            if casos_de_uso_data:
-                ejercicio_data["casos_de_uso_file"] = casos_de_uso_data
-
+            ejercicio_data = get_all_ejercicios_files(
+                ejercicio.id_ejercicio, ejercicio_data
+            )
+            ejercicio_data = serializer.data
+            ejercicio_data["titulo"] = ejercicio.titulo
+            ejercicio_data["restricciones"] = ejercicio.restricciones
+            response_data = formatear_datos_ejercicio(ejercicio_data)
             response_data.append(ejercicio_data)
 
         return Response(response_data, status=status.HTTP_200_OK)
@@ -143,10 +127,17 @@ class EjercicioCreateView(APIView):
     def post(self, request):
         user = request.user
 
-        data = request.data.copy()
+        data = formatear_entrada_ejercicio(request.data.copy())
         data["usuario"] = user.pk
 
         serializer = EjercicioSerializerCreate(data=data)
+        if "contenidos" in data and isinstance(data["contenidos"], list):
+            data["contenidos"] = ",".join(data["contenidos"])
+        elif "contenidos" in data and not isinstance(data["contenidos"], str):
+            return Response(
+                {"error": "Formato inválido para 'contenidos'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if serializer.is_valid():
             dificultad = serializer.validated_data.get("dificultad")
@@ -178,32 +169,37 @@ class EjercicioListView(APIView):
     def get(self, request):
         try:
             ejercicios = Ejercicio.objects.all()
-
+            paginator = PageNumberPagination()
+            paginated_ejercicios = paginator.paginate_queryset(ejercicios, request)
             lista = []
-            for ejercicio in ejercicios:
-                print("ejercicio", ejercicio.id_usuario_id, flush=True)
+            for ejercicio in paginated_ejercicios:
                 usuario = UsuarioPersonalizado.objects.get(pk=ejercicio.id_usuario_id)
-                print("usuario", usuario, flush=True)
+                files_data = get_all_ejercicios_files(ejercicio.id_ejercicio, None)
+
                 lista.append(
-                    {
-                        "id_ejercicio": ejercicio.id_ejercicio,
-                        "dificultad": ejercicio.dificultad,
-                        "puntaje": ejercicio.puntaje,
-                        "contenidos": ejercicio.contenidos,
-                        "lenguaje": ejercicio.lenguaje,
-                        "asignatura": ejercicio.asignatura,
-                        "id_usuario": usuario.id_usuario,
-                        "nombre_usuario": usuario.nombre,
-                        "email_usuario": usuario.email,
-                    }
+                    formatear_datos_ejercicio(
+                        {
+                            "id_ejercicio": ejercicio.id_ejercicio,
+                            "dificultad": ejercicio.dificultad,
+                            "puntaje": ejercicio.puntaje,
+                            "contenidos": ejercicio.contenidos,
+                            "lenguaje": ejercicio.lenguaje,
+                            "asignatura": ejercicio.asignatura,
+                            "id_usuario": usuario.id_usuario,
+                            "restricciones": ejercicio.restricciones,
+                            "titulo": ejercicio.titulo,
+                            "descripcion": ejercicio.descripcion,
+                            "resumen": ejercicio.resumen,
+                            **files_data,
+                        }
+                    )
                 )
-            return Response(lista, status=status.HTTP_200_OK)
+            return paginator.get_paginated_response(lista)  
         except UsuarioPersonalizado.DoesNotExist:
             return Response(
                 {"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
-            print(str(e), flush=True)
             return Response(
                 {"error": "Ocurrió un error inesperado"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -218,8 +214,10 @@ class IntentoEjercicioCreateView(APIView):
     @transaction.atomic
     def post(self, request, *args, **kwargs):
         user = request.user
-        codigo = request.data.get("codigo", "")
-        feedback_inicial = request.data.get("feedback_inicial", "")
+
+        data = formatear_entrada_ejercicio(request.data)
+        codigo = data.get("codigo", "")
+        feedback_inicial = data.get("feedback_inicial", "")
         usuario = UsuarioPersonalizado.objects.get(pk=user.id_usuario)
 
         if verify_imports(codigo):
@@ -228,7 +226,7 @@ class IntentoEjercicioCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        ejercicio_instance = get_ejercicio_instance(request.data["id_ejercicio"])
+        ejercicio_instance = get_ejercicio_instance(data["id_ejercicio"])
         if ejercicio_instance is None:
             return Response(
                 {"error": "Ejercicio no encontrado"}, status=status.HTTP_404_NOT_FOUND
@@ -237,8 +235,10 @@ class IntentoEjercicioCreateView(APIView):
         intento_existente = get_intento_existente(request, user)
 
         casos_de_uso = load_casos_de_uso(ejercicio_instance.casos_de_uso_file.path)
-        print(casos_de_uso, flush=True)
-        resultado = execute_code(codigo)
+        resultado = execute_code(
+            codigo, ejercicio_instance.head, ejercicio_instance.tail
+        )
+        print("resultado: ", resultado)
         if "Error" in resultado:
             return Response({"error": resultado}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -246,7 +246,7 @@ class IntentoEjercicioCreateView(APIView):
 
         resultado_limpio = [linea.strip() for linea in resultado.splitlines()]
         nota, resuelto = compare_outputs_and_calculate_score(
-            outputs_esperados, resultado_limpio
+            outputs_esperados, resultado_limpio, ejercicio_instance.binary
         )
         results_json = generate_result_json(outputs_esperados, resultado_limpio)
 
@@ -272,7 +272,7 @@ class IntentoEjercicioCreateView(APIView):
             detalle_instance,
             feedback_inicial,
             codigo,
-            request.data["id_ejercicio"],
+            data["id_ejercicio"],
             results_json,
         )
         if retro_instance is None:
@@ -327,6 +327,7 @@ class InfoEjerciciosPorUsuarioView(APIView):
                 "puntaje_obtenido": nota_maxima if nota_maxima else "No resuelto",
                 "intentos": {},
             }
+
             intentos_generales = IntentoEjercicio.objects.filter(
                 id_usuario=id_usuario, id_ejercicio=ejercicio.id_ejercicio
             ).distinct("id_ejercicio")
@@ -358,7 +359,7 @@ class InfoEjerciciosPorUsuarioView(APIView):
                         "conversacion": conversacion,
                     }
 
-            data.append(ejercicio_data)
+            data.append(formatear_datos_ejercicio(ejercicio_data))
 
         return Response(data, status=status.HTTP_200_OK)
 
@@ -381,7 +382,11 @@ class RankingEjercicioView(APIView):
                 usuario = UsuarioPersonalizado.objects.get(
                     id_usuario=intento.id_usuario.id_usuario
                 )
-                ranking.append({"nombre": usuario.nombre, "nota": intento.nota})
+                ranking.append(
+                    formatear_datos_ejercicio(
+                        {"nombre": usuario.nombre, "nota": intento.nota}
+                    )
+                )
             return Response(ranking, status=status.HTTP_200_OK)
         except UsuarioPersonalizado.DoesNotExist:
             return Response(
@@ -393,7 +398,6 @@ class RankingEjercicioView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
         except Exception as e:
-            print(str(e))
             return Response(
                 {"error": "Ocurrió un error inesperado"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -416,24 +420,26 @@ class EjerciciosPorAsignaturaView(APIView):
             for ejercicio in ejercicios:
                 usuario = UsuarioPersonalizado.objects.get(pk=ejercicio.id_usuario_id)
                 lista_ejercicios.append(
-                    {
-                        "id_ejercicio": ejercicio.id_ejercicio,
-                        "nota_maxima": IntentoEjercicio.objects.filter(
-                            id_ejercicio=ejercicio.id_ejercicio
-                        )
-                        .order_by("-nota")
-                        .first()
-                        .nota
-                        if IntentoEjercicio.objects.filter(
-                            id_ejercicio=ejercicio.id_ejercicio
-                        ).exists()
-                        else 0,
-                        "dificultad": ejercicio.dificultad,
-                        "contenidos": ejercicio.contenidos,
-                        "id_usuario": usuario.id_usuario,
-                        "email": usuario.email,
-                        "nombre": usuario.nombre,
-                    }
+                    formatear_datos_ejercicio(
+                        {
+                            "id_ejercicio": ejercicio.id_ejercicio,
+                            "nota_maxima": IntentoEjercicio.objects.filter(
+                                id_ejercicio=ejercicio.id_ejercicio
+                            )
+                            .order_by("-nota")
+                            .first()
+                            .nota
+                            if IntentoEjercicio.objects.filter(
+                                id_ejercicio=ejercicio.id_ejercicio
+                            ).exists()
+                            else 0,
+                            "difficulty": ejercicio.dificultad,
+                            "contenidos": ejercicio.contenidos,
+                            "id_usuario": usuario.id_usuario,
+                            "email": usuario.email,
+                            "nombre": usuario.nombre,
+                        }
+                    )
                 )
 
             return Response(lista_ejercicios, status=status.HTTP_200_OK)
@@ -443,7 +449,6 @@ class EjerciciosPorAsignaturaView(APIView):
                 {"error": "Ejercicios no encontrados"}, status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
-            print(str(e), flush=True)
             return Response(
                 {"error": "Ocurrió un error inesperado"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -517,10 +522,12 @@ class DetallePorEjercicio(APIView):
                             ) as file:
                                 resultados_content = json.load(file)
                         lista.append(
-                            {
-                                "id_retroalimentacion": detalle_retro.id_retroalimentacion,
-                                "resultados": resultados_content,
-                            }
+                            formatear_datos_ejercicio(
+                                {
+                                    "id_retroalimentacion": detalle_retro.id_retroalimentacion,
+                                    "resultados": resultados_content,
+                                }
+                            )
                         )
 
             return Response(lista, status=status.HTTP_200_OK)
@@ -534,7 +541,6 @@ class DetallePorEjercicio(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
         except Exception as e:
-            print(str(e), flush=True)
             return Response(
                 {"error": "Ocurrió un error inesperado"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -617,7 +623,7 @@ class AsignaturaInfoView(APIView):
             data["total_puntaje"] = ranking[0]["total_puntaje"]
             data["ranking"] = ranking[0]["ranking"]
 
-            return Response(data, status=status.HTTP_200_OK)
+            return Response(formatear_datos_ejercicio(data), status=status.HTTP_200_OK)
         except Ejercicio.DoesNotExist:
             return Response(
                 {"error": "Asignatura no encontrada"}, status=status.HTTP_404_NOT_FOUND

@@ -3,3 +3,7 @@ __pycache__
 .DS_Store
 .vscode
 /.idea/
+backend.env
+docker-compose.yml
+backend/usuario/migrations/0001_initial.py
+backend/ejercicio/migrations/0001_initial.py

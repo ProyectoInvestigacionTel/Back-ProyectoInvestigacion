@@ -37,6 +37,18 @@ def casos_de_uso_directory_path(instance, filename):
     return "ejercicios/temp/casos_de_uso_{0}".format(filename)
 
 
+def ejemplo_directory_path(instance, filename):
+    return "ejercicios/temp/ejemplo_{0}".format(filename)
+
+
+def salida_directory_path(instance, filename):
+    return "ejercicios/temp/salida_{0}".format(filename)
+
+
+def resumen_directory_path(instance, filename):
+    return "ejercicios/temp/resumen_{0}".format(filename)
+
+
 class Ejercicio(models.Model):
     class Meta:
         db_table = "ejercicios"
@@ -46,11 +58,23 @@ class Ejercicio(models.Model):
     fecha = models.DateTimeField(auto_now_add=True)
     enunciado_file = models.FileField(upload_to=enunciado_directory_path)
     casos_de_uso_file = models.FileField(upload_to=casos_de_uso_directory_path)
+    ejemplo_file = models.FileField(upload_to=ejemplo_directory_path)
+    salida_file = models.FileField(upload_to=salida_directory_path)
+    resumen = models.TextField()
+    descripcion = models.TextField()
     dificultad = models.CharField(max_length=100)
     contenidos = models.CharField(max_length=100)
     puntaje = models.PositiveSmallIntegerField()
     lenguaje = models.CharField(max_length=20)
     asignatura = models.CharField(max_length=30)
+    titulo = models.CharField(max_length=100)
+    restricciones = models.TextField()
+    head = models.CharField(max_length=100)
+    tail = models.CharField(max_length=100)
+    binary = models.BooleanField(default=False)
+    contraints = models.TextField()
+    formato_entrada = models.TextField()
+    formato_salida = models.TextField()
 
     def __str__(self):
         return str(self.id_ejercicio)
@@ -64,6 +88,7 @@ class Ejercicio(models.Model):
         for field, prefix in [
             ("enunciado_file", "enunciado_"),
             ("casos_de_uso_file", "casos_de_uso_"),
+            ("ejemplo_file", "ejemplo_"),
         ]:
             file_field = getattr(self, field)
             if not file_field:

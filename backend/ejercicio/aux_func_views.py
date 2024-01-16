@@ -5,7 +5,7 @@ from django.core.files.base import ContentFile
 from dockerfunctions import run_code_in_container
 from .models import *
 from .serializers import *
-
+import os
 
 def check_imports(code: str) -> bool:
     direct_imports = re.findall(r"\bimport (\w+)", code)
@@ -69,24 +69,33 @@ def load_casos_de_uso(casos_de_uso_path):
         return data
 
 
-def execute_code(codigo):
+def execute_code(codigo: str, head: str, tail: str) -> str:
     print("Llamando a run_code_in_container codigo: ", codigo, flush=True)
-    resultado = run_code_in_container(codigo)
+    codigo_final = head + "\n" + codigo + "\n" + tail
+    print("Codigo final: ", codigo_final, flush=True)
+    resultado = run_code_in_container(codigo_final)
     print("Resultado:", resultado, flush=True)
     return resultado
 
 
-def compare_outputs_and_calculate_score(outputs_esperados, resultado_limpio):
+def compare_outputs_and_calculate_score(outputs_esperados, resultado_limpio, binary):
     outputs_correctos = sum(
-        [
-            esperado == real
-            for esperado, real in zip(outputs_esperados, resultado_limpio)
-        ]
+        esperado == real
+        for esperado, real in zip(outputs_esperados, resultado_limpio)
     )
     total_outputs = len(outputs_esperados)
-    nota = (outputs_correctos / total_outputs) * 100
-    resuelto = outputs_correctos == total_outputs
+
+    if binary:
+        # solo obtiene puntaje si todos los casos son correctos
+        resuelto = outputs_correctos == total_outputs
+        nota = 100 if resuelto else 0
+    else:
+        #  obtiene puntaje por cada caso correcto
+        nota = (outputs_correctos / total_outputs) * 100
+        resuelto = outputs_correctos == total_outputs
+
     return nota, resuelto
+
 
 
 def update_intento(
@@ -174,3 +183,66 @@ def update_resuelto_state_and_nota(detalle_instance, usuario, nota):
         usuario.monedas += 10
         usuario.save()
         detalle_instance.save()
+
+
+def get_all_ejercicios_files(id_ejercicio, response_data):
+    ejercicio = get_ejercicio_instance(id_ejercicio)
+    enunciado_data, casos_de_uso_data, ejemplos_data, salida_data = (
+        None,
+        None,
+        None,
+        None,
+    )
+
+    if ejercicio.enunciado_file:
+        with ejercicio.enunciado_file.open("r") as file:
+            enunciado_data = file.read()
+
+    if ejercicio.casos_de_uso_file:
+        with ejercicio.casos_de_uso_file.open("r") as file:
+            casos_de_uso_data = json.load(file)
+    if ejercicio.casos_de_uso_file:
+        with ejercicio.ejemplo_file.open("r") as file:
+            ejemplos_data = file.read()
+
+    if ejercicio.salida_file:
+        with ejercicio.salida_file.open("r") as file:
+            salida_data = file.read()
+
+    if response_data is None:
+        response_data = {}
+    response_data["enunciado"] = enunciado_data
+    response_data["casos_de_uso"] = casos_de_uso_data
+    response_data["ejemplos"] = ejemplos_data
+    response_data["salida"] = salida_data
+    return response_data
+
+
+def formatear_datos_ejercicio(data):
+    ruta_archivo = os.path.join( 'global', 'formateo_entrada_ejercicios.json')
+    with open(ruta_archivo, 'r', encoding='utf-8') as archivo:
+        mapeo_campos = json.load(archivo)
+
+    def formatear_item(item):
+        return {mapeo_campos.get(key, key): value for key, value in item.items()}
+
+    if isinstance(data, list):
+        return [formatear_item(item) for item in data]
+    else:
+        return formatear_item(data)
+
+
+def formatear_entrada_ejercicio(data):
+    ruta_archivo = os.path.join('global', 'formateo_salida_ejercicios.json')
+    with open(ruta_archivo, 'r', encoding='utf-8') as archivo:
+        mapeo_campos = json.load(archivo)
+
+    def formatear_item(item):
+        return {
+            mapeo_campos.get(key, key): value for key, value in item.items()
+        }
+
+    if isinstance(data, list):
+        return [formatear_item(item) for item in data]
+    else:
+        return formatear_item(data)

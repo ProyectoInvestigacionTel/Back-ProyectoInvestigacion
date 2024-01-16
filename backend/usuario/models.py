@@ -18,7 +18,6 @@ class Rol(models.Model):
     )
 
     nombre = models.CharField(max_length=50, choices=ROL_OPCIONES)
-    descripcion = models.TextField()
 
     def __str__(self):
         return self.nombre

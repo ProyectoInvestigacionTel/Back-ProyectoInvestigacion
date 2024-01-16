@@ -1,0 +1,14 @@
+{
+    "title": "titulo",
+    "restrictions": "restricciones",
+    "difficulty": "dificultad",
+    "id": "id_ejercicio",
+    "score": "puntaje",
+    "contents": "contenidos",
+    "language": "lenguaje",
+    "subject": "asignatura",
+    "description": "descripcion",
+    "user_id": "id_usuario",
+    "input_format": "formato_entrada",
+    "output_format": "formato_salida"
+}

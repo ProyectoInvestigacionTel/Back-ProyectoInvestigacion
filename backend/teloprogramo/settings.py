@@ -30,7 +30,7 @@ SECRET_KEY = "django-insecure-aky!%!mi#))^q*3p0401i&$g2qbm3(3p!ixnj!ol26uy&bjnam
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 DEVELOPMENT_MODE = True
-ALLOWED_HOSTS = ["localhost", "10.6.131.99"]
+ALLOWED_HOSTS = ["localhost", "10.13.13.1",'*']
 
 # Application definition
 
@@ -142,7 +142,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 # Django Rest Framework
-CORS_ALLOWED_ORIGINS = ["http://localhost:3000"]
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://10.13.13.1",
+    "https://10.13.13.1",
+    "*",
+]
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -150,6 +155,8 @@ REST_FRAMEWORK = {
         #'rest_framework.authentication.SessionAuthentication',
         "rest_framework.authentication.BasicAuthentication",
     ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10
 }
 
 
