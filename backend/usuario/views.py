@@ -15,8 +15,9 @@ from drf_yasg.utils import swagger_auto_schema
 from rest_framework_simplejwt.tokens import RefreshToken
 from .backend import authenticateUser
 from rest_framework import status
-from rest_framework.parsers import JSONParser
+from rest_framework.parsers import JSONParser, FormParser
 from django.db import transaction
+from django.shortcuts import redirect
 
 
 class UsuarioViewPOSTestudiante(APIView):
@@ -120,10 +121,11 @@ class UsuarioViewGET(APIView):
 
 
 class LoginUser(APIView):
-    parser_classes = [JSONParser]
+    parser_classes = [FormParser, JSONParser]
 
     @transaction.atomic
     def post(self, request):
+        print("FORM:",request.data)
         email = request.data.get("email")
         password = request.data.get("contrasena")
 
@@ -147,7 +149,10 @@ class LoginUser(APIView):
                 user = UsuarioPersonalizado.objects.get(email=email)
 
         refresh = RefreshToken.for_user(user)
-        token_data = {"access": str(refresh.access_token), "refresh": str(refresh)}
+
+
+        # Add extra details to token
+        refresh['nombre'] = "TEST"
 
         user_serializer = UsuarioPersonalizado.objects.get(email=user.email)
         print((user_serializer.__dict__), flush=True)
@@ -159,8 +164,10 @@ class LoginUser(APIView):
             "roles": [rol.nombre for rol in user_serializer.roles.all()],
         }
 
+        token_data = {"access": str(refresh.access_token), "refresh": str(refresh)}
         response_data = {**user_data, **token_data}
-        return Response(response_data, status=status.HTTP_200_OK)
+        print(token_data.get("refresh") + str(type(refresh)), flush=True)
+        return redirect("http://localhost:3000/login?token=" + str(token_data.get("refresh")))
 
 
 def authenticate_or_create_user(data):
