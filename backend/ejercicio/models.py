@@ -1,3 +1,4 @@
+import json
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
@@ -44,11 +45,6 @@ def ejemplo_directory_path(instance, filename):
 def salida_directory_path(instance, filename):
     return "ejercicios/temp/salida_{0}".format(filename)
 
-
-def resumen_directory_path(instance, filename):
-    return "ejercicios/temp/resumen_{0}".format(filename)
-
-
 class Ejercicio(models.Model):
     class Meta:
         db_table = "ejercicios"
@@ -58,69 +54,46 @@ class Ejercicio(models.Model):
     fecha = models.DateTimeField(auto_now_add=True)
     enunciado_file = models.FileField(upload_to=enunciado_directory_path)
     casos_de_uso_file = models.FileField(upload_to=casos_de_uso_directory_path)
-    ejemplo_file = models.FileField(upload_to=ejemplo_directory_path)
-    salida_file = models.FileField(upload_to=salida_directory_path)
-    resumen = models.TextField()
-    descripcion = models.TextField()
+    ejemplo_file = models.FileField(upload_to=ejemplo_directory_path, null=True)
+    salida_file = models.FileField(upload_to=salida_directory_path, null=True)
     dificultad = models.CharField(max_length=100)
-    contenidos = models.CharField(max_length=100)
-    puntaje = models.PositiveSmallIntegerField()
+    contenidos = models.CharField(max_length=100, null=True)
+    puntaje = models.PositiveSmallIntegerField(default=0)
     lenguaje = models.CharField(max_length=20)
     asignatura = models.CharField(max_length=30)
     titulo = models.CharField(max_length=100)
-    restricciones = models.TextField()
-    head = models.CharField(max_length=100)
-    tail = models.CharField(max_length=100)
+    head = models.CharField(max_length=100, null=True)
+    tail = models.CharField(max_length=100, null=True)
     binary = models.BooleanField(default=False)
-    contraints = models.TextField()
+    restricciones = models.TextField()
     formato_entrada = models.TextField()
     formato_salida = models.TextField()
-
+    dependencia_ejercicio = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.DO_NOTHING
+    )
+    visible = models.BooleanField(default=False)
     def __str__(self):
         return str(self.id_ejercicio)
 
     def save(self, *args, **kwargs):
-        if not self.pk:
-            super(Ejercicio, self).save(*args, **kwargs)
-
-        # movimiento de archivos
-        paths_to_update = {}
-        for field, prefix in [
-            ("enunciado_file", "enunciado_"),
-            ("casos_de_uso_file", "casos_de_uso_"),
-            ("ejemplo_file", "ejemplo_"),
-        ]:
-            file_field = getattr(self, field)
-            if not file_field:
-                continue
-
-            with file_field.open() as f:
-                content = ContentFile(f.read())
-
-            temp_path = file_field.path
-
-            # extensión del archivo
-            file_extension = os.path.splitext(file_field.name)[1]
-
-            # nombre para el archivo.
-            desired_filename = prefix + str(self.id_ejercicio) + file_extension
-            new_directory = "ejercicios/{0}/".format(self.id_ejercicio)
-            new_path = os.path.join(new_directory, desired_filename)
-
-            # se mueve el archivo.
-            default_storage.save(new_path, content)
-
-            try:
-                # se intenta eliminar el archivo temporal
-                default_storage.delete(temp_path)
-            except Exception as e:
-                print(f"Error al eliminar el archivo temporal: {e}")
-
-            # almacena la nueva ruta para actualizarla luego.
-            paths_to_update[field] = new_path
-
-        # se actualiza a partir de la pk
-        Ejercicio.objects.filter(pk=self.pk).update(**paths_to_update)
+        enunciado_text = kwargs.pop('enunciado_text', None)
+        casos_de_uso = kwargs.pop('casos_de_uso', None)
+        super(Ejercicio, self).save(*args, **kwargs)
+        
+        if enunciado_text:
+            # Generate the path and save the enunciado_file.txt
+            enunciado_filename = f"enunciado_{self.id_ejercicio}.txt"
+            enunciado_path = os.path.join("ejercicios", str(self.id_ejercicio), enunciado_filename)
+            default_storage.save(enunciado_path, ContentFile(enunciado_text))
+            self.enunciado_file = enunciado_path 
+        if casos_de_uso:
+            # Generate the path and save the casos_de_uso_file.json
+            casos_de_uso_filename = f"casos_de_uso_{self.id_ejercicio}.json"
+            casos_de_uso_path = os.path.join("ejercicios", str(self.id_ejercicio), casos_de_uso_filename)
+            default_storage.save(casos_de_uso_path, ContentFile(json.dumps(casos_de_uso, indent=4)))
+            self.casos_de_uso_file = casos_de_uso_path 
+            
+        super(Ejercicio, self).save(update_fields=['enunciado_file', 'casos_de_uso_file'])
 
 
 class IntentoEjercicio(models.Model):

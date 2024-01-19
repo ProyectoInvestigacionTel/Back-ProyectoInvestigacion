@@ -40,5 +40,6 @@ urlpatterns = [
         name="detalle_por_ejercicio",
     ),
     path('asignatura_info/<str:asignatura>', AsignaturaInfoView.as_view(), name='asignatura_info'),
-    path('crear_ejercicio/<str:id_usuario>', UltimoEjercicioView.as_view(), name='crear_ejercicio')
+    path('crear_ejercicio/<str:id_usuario>', UltimoEjercicioView.as_view(), name='crear_ejercicio'),
+    path('create_ejercicio_profesor', EjercicioCreateViewProfesor.as_view(), name='crear_ejercicio_profesor'),
 ]
