@@ -4,29 +4,16 @@ services:
     container_name: backend
     build:
       context: ./backend
-    command: sh -c "gunicorn teloprogramo.wsgi:application --bind 0.0.0.0:8001 --reload"
+    command: sh -c "gunicorn teloprogramo.wsgi:application --bind 0.0.0.0:9000 --reload"
     ports:
-      - "8001:8001"
+      - "9000:9000"
     volumes:
       - ./backend:/app/backend
       - /var/run/docker.sock:/var/run/docker.sock
-    depends_on:
-      - database
-  database:
-    image: postgres:15
-    restart: always
-    volumes:
-      - ./BD:/var/lib/postgresql/data
-    environment:
-      POSTGRES_DB: mydb
-      POSTGRES_USER: myuser
-      POSTGRES_PASSWORD: mypass
-    ports:
-      - "5432:5432"
+    env_file:
+      - backend.env
   run_code:
     build: ./backend/run_code
     container_name: run_code
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-volumes:
-  react_build:

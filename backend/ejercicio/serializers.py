@@ -5,26 +5,52 @@ from django.contrib.auth import get_user_model
 
 
 class EjercicioSerializerCreate(serializers.ModelSerializer):
-    enunciado_file = serializers.FileField(required=True)
-    casos_de_uso_file = serializers.FileField(required=True)
-    ejemplo_file = serializers.FileField(required=True)
-    salida_file = serializers.FileField(required=True)
+    enunciado = serializers.FileField(required=True)
+    casos_de_uso = serializers.FileField(required=True)
+    ejemplo_file = serializers.FileField(required=False)
+    salida_file = serializers.FileField(required=False)
+    dificultad = serializers.CharField(required=True)
 
     class Meta:
         model = Ejercicio
-        exclude = ['fecha']
+        exclude = [
+            "fecha",
+        ]
+
+
+class EjercicioSerializerCreateProfesor(serializers.ModelSerializer):
+    title = serializers.CharField(required=True, source="titulo")
+    subject = serializers.CharField(required=True, source="asignatura")
+    problem_statement = serializers.CharField(required=True, source="enunciado_file")
+    constraints = serializers.CharField(required=True, source="restricciones")
+    input_format = serializers.CharField(required=True, source="formato_entrada")
+    output_format = serializers.CharField(required=True, source="formato_salida")
+    id_usuario = serializers.PrimaryKeyRelatedField(
+        queryset=get_user_model().objects.all(),write_only=True
+    )
+    class Meta:
+        model = Ejercicio
+        fields = [
+            "title",
+            "subject",
+            "problem_statement",
+            "input_format",
+            "constraints",
+            "output_format",
+            "id_usuario",
+        ]
 
 
 class EjercicioSerializerView(serializers.ModelSerializer):
     class Meta:
         model = Ejercicio
-        fields = '__all__'
+        fields = "__all__"
 
 
 class EjercicioListSerializerAll(serializers.ModelSerializer):
     class Meta:
         model = Ejercicio
-        fields = '__all__'
+        fields = "__all__"
 
 
 class IntentoEjercicioSerializer(serializers.ModelSerializer):

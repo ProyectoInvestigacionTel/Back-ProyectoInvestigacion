@@ -19,6 +19,7 @@ from django.db.models import Count, Sum, Max, Q, Window, F
 from django.utils import timezone
 from rest_framework.pagination import PageNumberPagination
 
+
 class EjercicioView(APIView):
     if settings.DEVELOPMENT_MODE:
         authentication_classes = []
@@ -130,6 +131,9 @@ class EjercicioCreateView(APIView):
         data = formatear_entrada_ejercicio(request.data.copy())
         data["usuario"] = user.pk
 
+        data["enunciado_text"] = request.data.get("enunciado_text")
+        data["casos_de_uso"] = request.data.get("casos_de_uso")
+
         serializer = EjercicioSerializerCreate(data=data)
         if "contenidos" in data and isinstance(data["contenidos"], list):
             data["contenidos"] = ",".join(data["contenidos"])
@@ -150,12 +154,35 @@ class EjercicioCreateView(APIView):
 
             serializer.save()
             return Response(
-                {"message": "Ejercico creado correctamente"},
+                {"message": "Ejercicio creado correctamente"},
                 status=status.HTTP_201_CREATED,
             )
-        return Response(
-            "Error al crear el ejercicio", status=status.HTTP_400_BAD_REQUEST
-        )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EjercicioCreateViewProfesor(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(request_body=EjercicioSerializerCreateProfesor)
+    def post(self, request):
+        user = request.user
+        
+        data = request.data.copy()
+        
+        data["id_usuario"] = user.id_usuario
+        print(data)
+        serializer = EjercicioSerializerCreateProfesor(data=data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {"message": "Ejercicio creado correctamente"},
+                status=status.HTTP_201_CREATED,
+            )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class EjercicioListView(APIView):
@@ -194,7 +221,7 @@ class EjercicioListView(APIView):
                         }
                     )
                 )
-            return paginator.get_paginated_response(lista)  
+            return paginator.get_paginated_response(lista)
         except UsuarioPersonalizado.DoesNotExist:
             return Response(
                 {"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND
