@@ -1,3 +1,4 @@
+from teloprogramo.settings import SECRET_KEY
 from .aux_func_views import generate_random_password
 from .models import UsuarioPersonalizado, Docente, Estudiante, Rol
 from .serializers import (
@@ -18,6 +19,7 @@ from rest_framework import status
 from rest_framework.parsers import JSONParser, FormParser
 from django.db import transaction
 from django.shortcuts import redirect
+import jwt
 
 
 class UsuarioViewPOSTestudiante(APIView):
@@ -148,14 +150,7 @@ class LoginUser(APIView):
             else:
                 user = UsuarioPersonalizado.objects.get(email=email)
 
-        refresh = RefreshToken.for_user(user)
-
-
-        # Add extra details to token
-        refresh['nombre'] = "TEST"
-
         user_serializer = UsuarioPersonalizado.objects.get(email=user.email)
-        print((user_serializer.__dict__), flush=True)
 
         user_data = {
             "id_usuario": user_serializer.id_usuario,
@@ -164,10 +159,12 @@ class LoginUser(APIView):
             "roles": [rol.nombre for rol in user_serializer.roles.all()],
         }
 
-        token_data = {"access": str(refresh.access_token), "refresh": str(refresh)}
-        response_data = {**user_data, **token_data}
-        print(token_data.get("refresh") + str(type(refresh)), flush=True)
-        return redirect("http://localhost:3000/login?token=" + str(token_data.get("refresh")))
+        refresh = RefreshToken.for_user(user)
+        refresh = jwt.decode(str(refresh), SECRET_KEY, algorithms=["HS256"])
+        refresh['user_data'] = user_data
+        refresh = jwt.encode(refresh, SECRET_KEY, algorithm="HS256")
+    
+        return redirect("http://localhost:3000/login?token=" + str(refresh))
 
 
 def authenticate_or_create_user(data):
