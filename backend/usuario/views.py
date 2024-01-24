@@ -164,7 +164,7 @@ class LoginUser(APIView):
         refresh['user_data'] = user_data
         refresh = jwt.encode(refresh, SECRET_KEY, algorithm="HS256")
     
-        return redirect("http://localhost:3000/auth?token=" + str(refresh))
+        return redirect("https://teloprogramo.cl/auth?token=" + str(refresh))
 
 
 def authenticate_or_create_user(data):
