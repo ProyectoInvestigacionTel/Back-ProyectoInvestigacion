@@ -7,17 +7,35 @@ from django.contrib.auth import get_user_model
 
 
 class ExerciseSerializerCreate(serializers.ModelSerializer):
-    problem_statement = serializers.FileField(required=True)
-    use_case = serializers.FileField(required=True)
-    example_file = serializers.FileField(required=False)
-    output_file = serializers.FileField(required=False)
-    difficulty = serializers.CharField(required=True)
+    problem_statement = serializers.CharField(write_only=True)
+    example = serializers.CharField(write_only=True, required=False)
+    use_cases = serializers.ListField(
+        child=serializers.JSONField(), write_only=True, required=False
+    )
 
     class Meta:
         model = Exercise
         exclude = [
             "date",
         ]
+
+    def create(self, validated_data):
+        problem_statement_text = validated_data.pop("problem_statement", None)
+        example_text = validated_data.pop("example", None)
+        use_cases_data = validated_data.pop("use_cases", None)
+
+        exercise = Exercise.objects.create(**validated_data)
+
+        if problem_statement_text:
+            save_exercise_file(exercise, problem_statement_text, "problem_statement")
+        if example_text:
+            save_exercise_file(exercise, example_text, "example")
+
+        if use_cases_data:
+            for use_case_data in use_cases_data:
+                UseCase.objects.create(exercise=exercise, **use_case_data)
+
+        return exercise
 
 
 class ExerciseSerializerCreateTeacher(serializers.ModelSerializer):
@@ -42,7 +60,6 @@ class ExerciseSerializerCreateTeacher(serializers.ModelSerializer):
         save_exercise_file(exercise, problem_statement_text, "problem_statement")
 
         return exercise
-
 
 class ExerciseSerializerUpdateTeacher(serializers.ModelSerializer):
     # algunos es para que en swagger no aparezcan como required
@@ -74,7 +91,9 @@ class ExerciseSerializerUpdateTeacher(serializers.ModelSerializer):
         instance.save()
 
         if problem_statement_text:
-            save_exercise_file(instance, problem_statement_text, "problem_statement")
+            save_exercise_file(
+                instance, problem_statement_text, "problem_statement"
+            )
         if example_text:
             save_exercise_file(instance, example_text, "example")
         if use_cases_data:
