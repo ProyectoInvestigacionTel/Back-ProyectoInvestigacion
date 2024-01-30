@@ -110,39 +110,19 @@ class SearchExercisesView(APIView):
 class ExerciseCreateView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
-    parser_classes = (MultiPartParser, FormParser)
 
     @swagger_auto_schema(request_body=ExerciseSerializerCreate)
     def post(self, request):
         user = request.user
 
-        data = format_entry_data(request.data.copy())
+        data = request.data.copy()
         data["user"] = user.pk
-
-        data["problem_statement_text"] = request.data.get("problem_statement_text")
-        data["use_cases"] = request.data.get("casos_de_uso")
-
         serializer = ExerciseSerializerCreate(data=data)
-        if "contents" in data and isinstance(data["contents"], list):
-            data["contents"] = ",".join(data["contents"])
-        elif "contents" in data and not isinstance(data["contents"], str):
-            return Response(
-                {"error": "Formato inválido para 'contents'."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
 
         if serializer.is_valid():
-            difficulty = serializer.validated_data.get("difficulty")
-
-            if difficulty not in ["Facil", "Media", "Avanzada"]:
-                return Response(
-                    {"error": "difficulty no válida."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            serializer.save()
+            exercise = serializer.save()
             return Response(
-                {"message": "Exercise creado correctamente"},
+                {"message": "Ejercicio creado correctamente", "exercise_id": exercise.pk},
                 status=status.HTTP_201_CREATED,
             )
 
