@@ -122,7 +122,10 @@ class ExerciseCreateView(APIView):
         if serializer.is_valid():
             exercise = serializer.save()
             return Response(
-                {"message": "Ejercicio creado correctamente", "exercise_id": exercise.pk},
+                {
+                    "message": "Ejercicio creado correctamente",
+                    "exercise_id": exercise.pk,
+                },
                 status=status.HTTP_201_CREATED,
             )
 
