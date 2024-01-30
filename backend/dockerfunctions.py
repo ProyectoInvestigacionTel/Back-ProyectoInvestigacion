@@ -18,7 +18,7 @@ def correct_special_characters(code_str: str) -> str:
 def run_code_in_container(code: str, timeout_seconds=20) -> str:
     client = DockerClient.from_env()
 
-    # nombre de archivo temporal aleatorio
+    # name de archivo temporal aleatorio
     random_suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=6))
     temp_filename = f"/app/temp/temp_code{random_suffix}.py"
 
@@ -37,7 +37,7 @@ def run_code_in_container(code: str, timeout_seconds=20) -> str:
         if exec_output.exit_code != 0:
             return f"Error al escribir en el archivo temporal: {exec_output.output.decode('utf-8')}"
 
-        # ejecutar el codigo con un limite de tiempo
+        # ejecutar el code con un limite de tiempo
         exec_result = container.exec_run(
             cmd=f"timeout {timeout_seconds} python {temp_filename}", user="appuser"
         )

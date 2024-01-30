@@ -12,7 +12,7 @@ SUPERUSER_PASSWORD="admin"
 
 # Ejecuta el comando createsuperuser con expect
 expect -c "
-spawn python manage.py createsuperuser --email $SUPERUSER_EMAIL --username $SUPERUSER_NAME --id_usuario $SUPERUSER_ID
+spawn python manage.py createsuperuser --email $SUPERUSER_EMAIL --username $SUPERUSER_NAME --user_id $SUPERUSER_ID
 expect \"Password:\"
 send \"$SUPERUSER_PASSWORD\r\"
 expect \"Password (again):\"

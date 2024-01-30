@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Comprobar si se proporciona el nombre de la aplicación
+# Comprobar si se proporciona el name de la aplicación
 if [ -z "$1" ]
 then
-  echo "Por favor, proporciona el nombre de la aplicación."
+  echo "Por favor, proporciona el name de la aplicación."
   exit 1
 fi
 

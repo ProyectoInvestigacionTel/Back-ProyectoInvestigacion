@@ -3,12 +3,12 @@
     "restrictions": "restricciones",
     "difficulty": "dificultad",
     "id": "id_ejercicio",
-    "score": "puntaje",
+    "score": "score",
     "contents": "contenidos",
-    "language": "lenguaje",
-    "subject": "asignatura",
-    "description": "descripcion",
-    "user_id": "id_usuario",
+    "language": "language",
+    "subject": "subject",
+    "description": "description",
+    "user_id": "user_id",
     "input_format": "formato_entrada",
     "output_format": "formato_salida"
 }

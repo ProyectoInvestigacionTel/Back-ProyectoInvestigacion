@@ -30,7 +30,7 @@ SECRET_KEY = "django-insecure-aky!%!mi#))^q*3p0401i&$g2qbm3(3p!ixnj!ol26uy&bjnam
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 DEVELOPMENT_MODE = True
-ALLOWED_HOSTS = ["localhost", "10.13.13.1",'*']
+ALLOWED_HOSTS = ["localhost", "10.13.13.1", "*"]
 
 # Application definition
 
@@ -51,8 +51,8 @@ INSTALLED_APPS = [
     "drf_yasg",
     "rest_framework_simplejwt",
     # aplicaciones
-    "usuario",
-    "ejercicio",
+    "user",
+    "exercise",
 ]
 
 
@@ -118,7 +118,7 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
-AUTH_USER_MODEL = "usuario.UsuarioPersonalizado"
+AUTH_USER_MODEL = "user.CustomUser"
 LOGIN_URL = "/admin/login/"
 
 
@@ -140,7 +140,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-'''
+"""
 # Django Rest Framework
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
@@ -148,22 +148,23 @@ CORS_ALLOWED_ORIGINS = [
     "https://10.13.13.1",
     "*",
 ]
-'''
+"""
 CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
         #'rest_framework.authentication.SessionAuthentication',
         "rest_framework.authentication.BasicAuthentication",
     ),
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 10,
 }
 
 
 # Simple JWT
 SIMPLE_JWT = {
-    "USER_ID_FIELD": "id_usuario",
+    "USER_ID_FIELD": "user_id",
 }
 
 SWAGGER_SETTINGS = {

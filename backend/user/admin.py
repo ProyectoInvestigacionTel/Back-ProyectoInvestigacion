@@ -1,22 +1,22 @@
 from django.contrib import admin
-from .models import UsuarioPersonalizado, Rol, Docente, Estudiante
+from .models import CustomUser, Rol, Teacher, Student
 from unfold.admin import ModelAdmin
 
 
-class UsuarioPersonalizadoAdmin(ModelAdmin):
+class CustomUserAdmin(ModelAdmin):
     list_display = (
-        "id_usuario",
+        "user_id",
         "email",
-        "nombre",
+        "name",
         "is_active",
         "is_staff",
         "is_superuser",
-        "monedas",
+        "coins",
     )
-    search_fields = ("email", "nombre")
+    search_fields = ("email", "name")
     list_filter = ("is_active", "is_staff", "is_superuser")
     fieldsets = (
-        (None, {"fields": ("id_usuario", "email", "nombre", "password")}),
+        (None, {"fields": ("user_id", "email", "name", "password")}),
         ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "roles")}),
     )
     add_fieldsets = (
@@ -25,9 +25,9 @@ class UsuarioPersonalizadoAdmin(ModelAdmin):
             {
                 "classes": ("wide",),
                 "fields": (
-                    "id_usuario",
+                    "user_id",
                     "email",
-                    "nombre",
+                    "name",
                     "password",
                     "is_active",
                     "is_staff",
@@ -50,21 +50,21 @@ class UsuarioPersonalizadoAdmin(ModelAdmin):
 
 
 class RolAdmin(admin.ModelAdmin):
-    list_display = ("nombre",)
-    search_fields = ("nombre",)
+    list_display = ("name",)
+    search_fields = ("name",)
 
 
-class DocenteAdmin(admin.ModelAdmin):
-    list_display = ("usuario", "asignatura")
-    search_fields = ("usuario__nombre", "asignatura")
+class TeacherAdmin(admin.ModelAdmin):
+    list_display = ("user", "subject")
+    search_fields = ("user__name", "subject")
 
 
-class EstudianteAdmin(admin.ModelAdmin):
-    list_display = ("usuario", "asignatura", "paralelo", "semestre")
-    search_fields = ("usuario__nombre", "asignatura", "paralelo", "semestre")
+class StudentAdmin(admin.ModelAdmin):
+    list_display = ("user", "subject", "section", "semester")
+    search_fields = ("user__name", "subject", "section", "semester")
 
 
-admin.site.register(UsuarioPersonalizado, UsuarioPersonalizadoAdmin)
+admin.site.register(CustomUser, CustomUserAdmin)
 admin.site.register(Rol, RolAdmin)
-admin.site.register(Docente, DocenteAdmin)
-admin.site.register(Estudiante, EstudianteAdmin)
+admin.site.register(Teacher, TeacherAdmin)
+admin.site.register(Student, StudentAdmin)
