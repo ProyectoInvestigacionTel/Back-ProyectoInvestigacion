@@ -172,7 +172,7 @@ class LoginUser(APIView):
         refresh["user_data"] = user_data
         refresh = jwt.encode(refresh, SECRET_KEY, algorithm="HS256")
 
-        return redirect("https://teloprogramo.cl/login?token=" + str(refresh))
+        return redirect("https://teloprogramo.cl/auth?token=" + str(refresh))
 
 
 class LoginUserToken(APIView):
