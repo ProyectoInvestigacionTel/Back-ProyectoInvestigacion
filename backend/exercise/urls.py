@@ -8,7 +8,8 @@ urlpatterns = [
         "list",
         ExerciseListView.as_view(),
     ),
-    path("attempt", AttemptExerciseCreateView.as_view(), name="Register-attempt"),
+    path("attempt_gpt", AttemptExerciseCreateGPTView.as_view(), name="Register-attempt"),
+    path("attempt", AttemptExerciseCreateView.as_view(), name="Attempt-list"),
     path(
         "exercises-per-user/<str:user_id>",
         InfoExercisesPerUserView.as_view(),

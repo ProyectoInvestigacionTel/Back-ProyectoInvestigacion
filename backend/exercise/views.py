@@ -233,7 +233,7 @@ class ExerciseListView(APIView):
             )
 
 
-class AttemptExerciseCreateView(APIView):
+class AttemptExerciseCreateGPTView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
@@ -344,6 +344,7 @@ class InfoExercisesPerUserView(APIView):
             ).aggregate(Max("score"))["score__max"]
             exercise_data = {
                 "exercise_id": exercise.exercise_id,
+                "title": exercise.title,
                 "creation_date": exercise.date,
                 "difficulty": exercise.difficulty,
                 "contents": exercise.contents,
@@ -383,7 +384,7 @@ class InfoExercisesPerUserView(APIView):
                         "conversation": conversation,
                     }
 
-            data.append(format_response_data(exercise_data))
+            data.append(exercise_data)
 
         return Response(data, status=status.HTTP_200_OK)
 
@@ -759,3 +760,73 @@ class UseCasesCreateView(APIView):
 
         created_data = UseCaseSerializer(created_use_cases, many=True).data
         return Response(created_data, status=status.HTTP_201_CREATED)
+
+
+class AttemptExerciseCreateView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(request_body=AttemptExerciseSerializer)
+    @transaction.atomic
+    def post(self, request, *args, **kwargs):
+        user = request.user
+
+        data = format_entry_data(request.data)
+        code = data.get("code", "")
+        initial_feedback = data.get("initial_feedback", "")
+        user = CustomUser.objects.get(pk=user.user_id)
+
+        if verify_imports(code):
+            return Response(
+                {"error": "Librerías importadas detectadas"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        exercise_instance = get_excercise_instance(data["exercise_id"])
+        if exercise_instance is None:
+            return Response(
+                {"error": "Exercise no encontrado"}, status=status.HTTP_404_NOT_FOUND
+            )
+        print("Exercise_instance: ", exercise_instance.__dict__)
+        attempt_existente = get_current_attempt(request, user)
+
+        casos_de_uso = load_use_case(exercise_instance.exercise_id)
+        print("use_cases: ", casos_de_uso)
+        result = execute_code(code, exercise_instance.head, exercise_instance.tail)
+        print("result: ", result)
+        if "Error" in result:
+            return Response({"error": result}, status=status.HTTP_400_BAD_REQUEST)
+
+        outputs_esperados = [str(caso["output"]).strip() for caso in casos_de_uso]
+
+        result_limpio = [linea.strip() for linea in result.splitlines()]
+        score, resuelto = compare_outputs_and_calculate_score(
+            outputs_esperados, result_limpio, exercise_instance.binary
+        )
+        results_json = generate_result_json(outputs_esperados, result_limpio)
+
+        attempt_instance = update_attempt(
+            attempt_existente, request, exercise_instance, user, score, resuelto
+        )
+        if not attempt_instance:
+            return Response(
+                {"error": "Error al actualizar o crear el attempt"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        detail_instance = create_or_update_attempt_detal(
+            attempt_instance, score, resuelto
+        )
+        if detail_instance is None:
+            return Response(
+                {"error": "Error al crear o actualizar el detail del attempt"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(
+            {
+                "message": "attempt registrado con éxito",
+                "result": resuelto,
+                "detail_use_cases": results_json,  
+            },
+            status=status.HTTP_201_CREATED,
+        )
