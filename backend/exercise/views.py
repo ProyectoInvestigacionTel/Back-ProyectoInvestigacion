@@ -233,7 +233,7 @@ class ExerciseListView(APIView):
             )
 
 
-class AttemptExerciseCreateView(APIView):
+class AttemptExerciseCreateGPTView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
