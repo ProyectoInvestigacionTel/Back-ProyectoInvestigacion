@@ -1,14 +1,12 @@
 {
-    "title": "titulo",
-    "restrictions": "restricciones",
-    "difficulty": "dificultad",
+    "title": "title",
+    "constraints": "constraints",
+    "difficulty": "difficulty",
     "id": "id_ejercicio",
     "score": "score",
-    "contents": "contenidos",
+    "contents": "contents",
     "language": "language",
     "subject": "subject",
     "description": "description",
-    "user_id": "user_id",
-    "input_format": "formato_entrada",
-    "output_format": "formato_salida"
+    "user_id": "user_id"
 }
