@@ -171,8 +171,8 @@ class LoginUser(APIView):
         refresh = jwt.decode(str(refresh), SECRET_KEY, algorithms=["HS256"])
         refresh["user_data"] = user_data
         refresh = jwt.encode(refresh, SECRET_KEY, algorithm="HS256")
-
-        return redirect("https://teloprogramo.cl/auth?token=" + str(refresh))
+        return redirect("http://localhost:3000/auth?token=" + str(refresh))
+        #return redirect("https://teloprogramo.cl/auth?token=" + str(refresh))
 
 
 class LoginUserToken(APIView):
@@ -251,7 +251,8 @@ def authenticate_or_create_user(data):
 
         if rol.name == Rol.Student:
             context_title = data.get("context_title")
-            section = context_title.split("sections:")[1]
+            print("CONTEXT TITLE:", context_title.split("sections:"))
+            section = context_title.split("Paralelos:")[1]
             semester = context_label.split("_")[0]
             Student.objects.create(
                 user=user,
