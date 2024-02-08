@@ -219,9 +219,6 @@ def get_all_exercises_files(exercise_id, response_data):
             with exercise.example.open("r") as file:
                 response_data["examples"] = file.read()
 
-        use_cases = UseCase.objects.filter(exercise_id=exercise_id)
-        use_cases_data = UseCaseSerializer(use_cases, many=True).data
-        response_data["use_cases"] = use_cases_data
 
         return response_data
     except Exception as e:

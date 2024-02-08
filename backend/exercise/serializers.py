@@ -105,7 +105,7 @@ class ExerciseSerializerUpdateTeacher(serializers.ModelSerializer):
 class UseCaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = UseCase
-        fields = ("input_code", "output_code", "strength", "is_sample", "explanation")
+        fields = ("id","input_code", "output_code", "strength", "is_sample", "explanation")
 
 
 class ExerciseSerializerView(serializers.ModelSerializer):
@@ -204,3 +204,19 @@ class UseCaseBulkCreateSerializer(serializers.Serializer):
             UseCase.objects.create(**use_case_data) for use_case_data in use_cases_data
         ]
         return use_cases
+
+
+
+class RankingPerSubjectSerializer(serializers.Serializer):
+    subject = serializers.CharField(max_length=100)
+    total_exercises = serializers.IntegerField()
+    exercises_completed = serializers.IntegerField()
+    average_score = serializers.FloatField()
+    success_rate = serializers.FloatField()
+
+
+class ExerciseRankingSerializer(serializers.Serializer):
+    exercise_id = serializers.IntegerField()
+    title = serializers.CharField()
+    total_attempts = serializers.IntegerField()
+    completion_rate = serializers.FloatField()

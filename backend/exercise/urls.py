@@ -8,7 +8,9 @@ urlpatterns = [
         "list",
         ExerciseListView.as_view(),
     ),
-    path("attempt_gpt", AttemptExerciseCreateGPTView.as_view(), name="Register-attempt"),
+    path(
+        "attempt_gpt", AttemptExerciseCreateGPTView.as_view(), name="Register-attempt"
+    ),
     path("attempt", AttemptExerciseCreateView.as_view(), name="Attempt-list"),
     path(
         "exercises-per-user/<str:user_id>",
@@ -70,5 +72,10 @@ urlpatterns = [
         "use_cases/<int:exercise_id>",
         UseCasesCreateView.as_view(),
         name="use-case-bulk-create",
+    ),
+    path(
+        "ranking-subject/<str:subject>/",
+        RankingPerSubjectView.as_view(),
+        name="ranking-subject",
     ),
 ]

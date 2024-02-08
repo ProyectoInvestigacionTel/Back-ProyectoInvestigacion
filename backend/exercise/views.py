@@ -1,5 +1,6 @@
 from datetime import timedelta
 import json
+from django.forms import IntegerField
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from drf_yasg.utils import swagger_auto_schema
@@ -13,11 +14,27 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db import transaction
 from drf_yasg import openapi
-from rest_framework.parsers import MultiPartParser, FormParser
+
 from django.conf import settings
 from .aux_func_views import *
 from django.db.models.functions import Rank
-from django.db.models import Count, Sum, Max, Q, Window, F
+from django.db.models import (
+    Count,
+    Sum,
+    Max,
+    Q,
+    Window,
+    F,
+    Count,
+    Sum,
+    F,
+    FloatField,
+    ExpressionWrapper,
+    Avg,
+    Case,
+    When,
+    IntegerField,
+)
 from django.utils import timezone
 from rest_framework.pagination import PageNumberPagination
 
@@ -122,7 +139,10 @@ class ExerciseCreateView(APIView):
         if serializer.is_valid():
             exercise = serializer.save()
             return Response(
-                {"message": "Ejercicio creado correctamente", "exercise_id": exercise.pk},
+                {
+                    "message": "Ejercicio creado correctamente",
+                    "exercise_id": exercise.pk,
+                },
                 status=status.HTTP_201_CREATED,
             )
 
@@ -402,25 +422,50 @@ class RankingExerciseView(APIView):
             attempts = AttemptExercise.objects.filter(exercise_id=exercise_id).order_by(
                 "-score"
             )
+
             ranking = []
+
             for attempt in attempts:
-                user = CustomUser.objects.get(user_id=attempt.user_id.user_id)
-                ranking.append(
-                    format_response_data({"name": user.name, "score": attempt.score})
+                user = get_user_model().objects.get(pk=attempt.user_id.pk)
+
+                total_attempts = AttemptDetail.objects.filter(
+                    general_attempt_id=attempt.general_attempt_id
+                ).count()
+
+                correct_attempts = AttemptDetail.objects.filter(
+                    general_attempt_id=attempt.general_attempt_id, result=True
+                ).count()
+
+                success_rate = (
+                    (correct_attempts / total_attempts * 100) if total_attempts else 0
                 )
+
+                ranking.append(
+                    {
+                        "user_id": user.pk,
+                        "name": user.name,
+                        "email": user.email,
+                        "total_attempts": total_attempts,
+                        "correct_attempts": correct_attempts,
+                        "success_rate": success_rate,
+                        "score": attempt.score,
+                    }
+                )
+
+            # Return the response with the ranking list
             return Response(ranking, status=status.HTTP_200_OK)
         except CustomUser.DoesNotExist:
             return Response(
-                {"error": "user no encontrado"}, status=status.HTTP_404_NOT_FOUND
+                {"error": "User not found"}, status=status.HTTP_404_NOT_FOUND
             )
         except AttemptExercise.DoesNotExist:
             return Response(
-                {"error": "attempt de Exercise no encontrado"},
+                {"error": "Attempt for Exercise not found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
         except Exception as e:
             return Response(
-                {"error": "Ocurrió un error inesperado"},
+                {"error": "An unexpected error occurred: " + str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -444,16 +489,18 @@ class ExercisesPerSubjectView(APIView):
                     format_response_data(
                         {
                             "exercise_id": exercise.exercise_id,
-                            "max_score": AttemptExercise.objects.filter(
-                                exercise_id=exercise.exercise_id
-                            )
-                            .order_by("-score")
-                            .first()
-                            .score
-                            if AttemptExercise.objects.filter(
-                                exercise_id=exercise.exercise_id
-                            ).exists()
-                            else 0,
+                            "max_score": (
+                                AttemptExercise.objects.filter(
+                                    exercise_id=exercise.exercise_id
+                                )
+                                .order_by("-score")
+                                .first()
+                                .score
+                                if AttemptExercise.objects.filter(
+                                    exercise_id=exercise.exercise_id
+                                ).exists()
+                                else 0
+                            ),
                             "difficulty": exercise.difficulty,
                             "contents": exercise.contents,
                             "user_id": user.user_id,
@@ -582,14 +629,14 @@ class SubjectInfoView(APIView):
             exercises_per_subject = Exercise.objects.filter(subject=subject)
 
             # Agregar información por contents
-            exercises_per_contents = exercises_per_subject.values("contents").anscorete(
+            exercises_per_contents = exercises_per_subject.values("contents").annotate(
                 qty=Count("exercise_id")
             )
             # Total de Exercises en la subject
             total_exercises = exercises_per_subject.count()
 
             # Agregar información por difficulty
-            difficultyes = exercises_per_subject.values("difficulty").anscorete(
+            difficultyes = exercises_per_subject.values("difficulty").annotate(
                 qty=Count("exercise_id")
             )
 
@@ -628,8 +675,8 @@ class SubjectInfoView(APIView):
             ranking = (
                 AttemptExercise.objects.filter(exercise_id__subject=subject)
                 .values("user_id")
-                .anscorete(total_score=Sum("exercise_id__score"))
-                .anscorete(
+                .annotate(total_score=Sum("exercise_id__score"))
+                .annotate(
                     ranking=Window(expression=Rank(), order_by=F("total_score").desc())
                 )
             )
@@ -646,6 +693,7 @@ class SubjectInfoView(APIView):
                 {"error": "subject no encontrada"}, status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
+
             return Response(
                 {"error": "Ocurrió un error inesperado: " + str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -826,7 +874,59 @@ class AttemptExerciseCreateView(APIView):
             {
                 "message": "attempt registrado con éxito",
                 "result": resuelto,
-                "detail_use_cases": results_json,  
+                "detail_use_cases": results_json,
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class RankingPerSubjectView(APIView):
+    if settings.DEVELOPMENT_MODE:
+        authentication_classes = []
+        permission_classes = []
+    else:
+        authentication_classes = [JWTAuthentication]
+        permission_classes = [IsAuthenticated]
+
+    def get(self, request, subject):
+        try:
+            exercises = Exercise.objects.filter(subject=subject)
+            attempts = (
+                AttemptExercise.objects.filter(exercise_id__in=exercises)
+                .values("user_id")
+                .annotate(
+                    total_score=Sum("score"),
+                    exercises_completed=Count("exercise_id", distinct=True),
+                    correct_attempts=Sum(
+                        Case(
+                            When(result=True, then=1),
+                            default=0,
+                            output_field=IntegerField(),
+                        )
+                    ),
+                    total_attempts=Count("exercise_id"),
+                )
+                .annotate(
+                    success_rate=ExpressionWrapper(
+                        F("correct_attempts") * 100.0 / F("total_attempts"),
+                        output_field=FloatField(),
+                    )
+                )
+                .order_by("-total_score", "-exercises_completed", "-success_rate")
+            )
+
+            enriched_attempts = [
+                {
+                    **attempt,
+                    "user_details": CustomUser.objects.filter(pk=attempt["user_id"])
+                    .values("name", "email")
+                    .first(),
+                }
+                for attempt in attempts
+            ]
+
+            return Response(enriched_attempts, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
