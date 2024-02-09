@@ -37,7 +37,7 @@ from django.db.models import (
 )
 from django.utils import timezone
 from rest_framework.pagination import PageNumberPagination
-
+import requests
 
 class ExerciseView(APIView):
     if settings.DEVELOPMENT_MODE:
@@ -930,3 +930,16 @@ class RankingPerSubjectView(APIView):
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class ExerciseGeneratorView(APIView):
+    #authentication_classes = [JWTAuthentication]
+    #permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        response = requests.post(
+            url='http://localhost:3002',
+            data=json.dumps({"query":"conditionals, loops, medium easy"}),
+            headers={"Content-Type": "application/json"}
+        )
+        return Response({"message": response}, status=status.HTTP_200_OK)

@@ -78,4 +78,9 @@ urlpatterns = [
         RankingPerSubjectView.as_view(),
         name="ranking-subject",
     ),
+    path(
+        "generator",
+        ExerciseGeneratorView.as_view(),
+        name="exercise-generator",
+    )
 ]
