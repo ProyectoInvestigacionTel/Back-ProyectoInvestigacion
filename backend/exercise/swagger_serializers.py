@@ -12,3 +12,18 @@ class ExerciseSerializerCreateTeacherDocumentation(serializers.ModelSerializer):
             "constraints",
             "output_format",
         ]
+
+
+class ExerciseSerializerCreateDocumentation(serializers.ModelSerializer):
+    problem_statement = serializers.CharField(write_only=True)
+    example = serializers.CharField(write_only=True, required=False)
+    use_cases = serializers.ListField(
+        child=serializers.JSONField(), write_only=True, required=False
+    )
+
+    class Meta:
+        model = Exercise
+        exclude = [
+            "date",
+            "user"
+        ]

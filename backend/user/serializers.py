@@ -30,7 +30,7 @@ class CustomUserGETSerializer(serializers.ModelSerializer):
 
 class TeacherPOSTSerializer(serializers.ModelSerializer):
     usuario = CustomUserPOSTSerializer()
-
+    subject = serializers.JSONField()
     class Meta:
         model = Teacher
         fields = ("usuario", "subject")
@@ -38,7 +38,7 @@ class TeacherPOSTSerializer(serializers.ModelSerializer):
 
 class TeacherGETSerializer(serializers.ModelSerializer):
     usuario = CustomUserGETSerializer()
-
+    subject = serializers.JSONField()
     class Meta:
         model = Teacher
         fields = ("usuario", "subject")
@@ -46,18 +46,18 @@ class TeacherGETSerializer(serializers.ModelSerializer):
 
 class StudentPOSTSerializer(serializers.ModelSerializer):
     usuario = CustomUserPOSTSerializer()
-
+    subject = serializers.JSONField()
     class Meta:
         model = Student
-        fields = ("usuario", "subject", "section", "semester")
+        fields = ("usuario", "subject", "semester")
 
 
 class StudentGETSerializer(serializers.ModelSerializer):
     usuario = CustomUserGETSerializer()
-
+    subject = serializers.JSONField()   
     class Meta:
         model = Student
-        fields = ("usuario", "subject", "section", "semester")
+        fields = ("usuario", "subject", "semester")
 
 
 class CustomTokenObtainSerializer(serializers.Serializer):

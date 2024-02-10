@@ -10,6 +10,10 @@ import os
 from django.core.files.storage import default_storage
 
 
+def contains_print_statement(code):
+    return re.search(r"print\((.*?)\)", code)
+
+
 def check_imports(code: str) -> bool:
     direct_imports = re.findall(r"\bimport (\w+)", code)
     from_imports = re.findall(r"\bfrom (\w+)", code)
@@ -53,7 +57,7 @@ def generate_result_json(spected_outputs, clean_result):
 
         result = {"output": spected, "obtained": real, "state": spected == real}
         results.append(result)
-    return json.dumps(results)
+    return results
 
 
 def get_current_attempt(request, user):
@@ -76,17 +80,18 @@ def load_use_case(exercise_id):
     ]
 
 
-def execute_code(code: str, head: str, tail: str) -> str:
-    print("Llamando a run_code_in_container code: ", code, flush=True)
-    if head is None:
-        head = ""
-    if tail is None:
-        tail = ""
-    final_code = head + "\n" + code + "\n" + tail
-    print("code final: ", final_code, flush=True)
-    result = run_code_in_container(final_code)
-    print("result:", result, flush=True)
-    return result
+def execute_code(code, head, tail):
+    print_warning = "Warning: 'print' found in the execution setup (head/tail)."
+    if head and contains_print_statement(head):
+        print(print_warning + " In head.", flush=True)
+    if tail and contains_print_statement(tail):
+        print(print_warning + " In tail.", flush=True)
+
+    final_code = "\n".join(filter(None, [head, code, tail]))
+    print("Final code:", final_code, flush=True)
+    full_output = run_code_in_container(final_code)
+
+    return full_output.strip()
 
 
 def compare_outputs_and_calculate_score(spected_outputs, clean_result, binary):
@@ -219,7 +224,6 @@ def get_all_exercises_files(exercise_id, response_data):
             with exercise.example.open("r") as file:
                 response_data["examples"] = file.read()
 
-
         return response_data
     except Exception as e:
         print("Error in get all files:", e, flush=True)
@@ -274,3 +278,14 @@ def save_exercise_file(exercise: Exercise, file_content: str, category: str):
 
     print(f'File saved to "{full_path}"', flush=True)
     return full_path
+
+
+def update_subject_contents(subject_instance, new_contents):
+    existing_contents = (
+        subject_instance.contents.split(",") if subject_instance.contents else []
+    )
+    new_contents_list = new_contents.split(",") if new_contents else []
+
+    updated_contents = list(set(existing_contents + new_contents_list))
+    subject_instance.contents = ",".join(updated_contents)
+    subject_instance.save()

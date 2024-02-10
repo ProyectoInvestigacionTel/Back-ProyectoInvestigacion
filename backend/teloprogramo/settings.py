@@ -53,6 +53,8 @@ INSTALLED_APPS = [
     # aplicaciones
     "user",
     "exercise",
+    "subject",
+    "institution",
 ]
 
 

@@ -24,7 +24,7 @@ class Rol(models.Model):
 
 
 class CustomUserManager(BaseUserManager):
-    def create_user(self, user_id, email, name, password=None):
+    def create_user(self, user_id, email, name, institution, campus, password=None):
         if CustomUser.objects.filter(user_id=user_id).exists():
             raise ValueError("Un usuario con este user_id ya existe")
         if not email:
@@ -35,13 +35,17 @@ class CustomUserManager(BaseUserManager):
         email = self.normalize_email(email)
         user = self.model(email=email, name=name, user_id=user_id)
         user.set_password(password)
+        user.campus = campus
+        user.institution = institution
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, user_id, email, name, password=None):
+    def create_superuser(
+        self, user_id, email, name, institution, campus, password=None
+    ):
         admin_role = Rol.objects.get(name=Rol.ADMIN)
 
-        user = self.create_user(user_id, email, name, password)
+        user = self.create_user(user_id, email, name, institution, campus, password)
         user.roles.add(admin_role)
         user.is_superuser = True
         user.is_staff = True
@@ -51,7 +55,7 @@ class CustomUserManager(BaseUserManager):
 
 class CustomUser(AbstractBaseUser):
     class Meta:
-        db_table = "usuarios"
+        db_table = "user"
 
     user_id = models.CharField(primary_key=True, max_length=20, unique=True)
     email = models.EmailField(unique=True, null=True)
@@ -63,7 +67,14 @@ class CustomUser(AbstractBaseUser):
     roles = models.ManyToManyField(Rol)
     objects = CustomUserManager()
     coins = models.SmallIntegerField(default=0)
-    institution = models.CharField(max_length=100, null=True)
+    institution = models.ForeignKey(
+        "institution.Institution",
+        on_delete=models.DO_NOTHING,
+        db_column="institution",
+        null=True,
+        blank=True,
+    )
+    campus = models.CharField(max_length=100, null=True)
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["name", "user_id"]
 
@@ -83,12 +94,11 @@ class CustomUser(AbstractBaseUser):
 # Modelo de Teacher,TeacherAssistant y Coordinator
 class Teacher(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, db_column="user_id")
-    subject = models.CharField(max_length=150)
+    subject = models.JSONField()
 
 
 # Modelo de Student
 class Student(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, db_column="user_id")
-    subject = models.CharField(max_length=150)
-    section = models.CharField(max_length=10)
+    subject = models.JSONField()
     semester = models.CharField(max_length=10)

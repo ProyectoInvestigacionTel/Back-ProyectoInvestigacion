@@ -11,4 +11,7 @@ urlpatterns = [
     path("token/", csrf_exempt(LoginUser.as_view()), name="token_obtain_pair"),
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("original_token/", LoginUserToken.as_view(), name="logout"),
+    path("add_coin/<str:user_id>", AddCoinView.as_view(), name="add_coin"),
+    path("get_coin/<str:user_id>", GetCoinView.as_view(), name="get_coin"),
+    path("remove_coins/<str:user_id>", RemoveCoinView.as_view(), name="remove_coin"),
 ]

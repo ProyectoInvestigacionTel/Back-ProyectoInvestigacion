@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.views import APIView
-from exercise.swagger_serializers import ExerciseSerializerCreateTeacherDocumentation
+from exercise.swagger_serializers import ExerciseSerializerCreateDocumentation, ExerciseSerializerCreateTeacherDocumentation
 from user.models import *
 from user.models import CustomUser
 from .models import *
@@ -128,12 +128,13 @@ class ExerciseCreateView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
-    @swagger_auto_schema(request_body=ExerciseSerializerCreate)
+    @swagger_auto_schema(request_body=ExerciseSerializerCreateDocumentation)
     def post(self, request):
         user = request.user
-
+        print("user: ", user.pk, flush=True)
         data = request.data.copy()
         data["user"] = user.pk
+        print("data: ", data, flush=True)
         serializer = ExerciseSerializerCreate(data=data)
 
         if serializer.is_valid():
@@ -164,7 +165,7 @@ class ExerciseCreateViewTeacher(APIView):
             if settings.DEVELOPMENT_MODE:
                 user = CustomUser.objects.get(user_id="02")
             data = request.data.copy()
-            data["user"] = user.user_id
+            data["user"] = user.pk
 
             serializer = ExerciseSerializerCreateTeacher(data=data)
 
@@ -257,7 +258,7 @@ class AttemptExerciseCreateGPTView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
-    @swagger_auto_schema(request_body=AttemptExerciseSerializer)
+    @swagger_auto_schema(request_body=AttemptExerciseGPTSerializer)
     @transaction.atomic
     def post(self, request, *args, **kwargs):
         user = request.user
@@ -821,7 +822,6 @@ class AttemptExerciseCreateView(APIView):
 
         data = format_entry_data(request.data)
         code = data.get("code", "")
-        initial_feedback = data.get("initial_feedback", "")
         user = CustomUser.objects.get(pk=user.user_id)
 
         if verify_imports(code):

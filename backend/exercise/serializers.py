@@ -1,6 +1,11 @@
 from rest_framework import serializers
 
-from exercise.aux_func_views import get_all_exercises_files, save_exercise_file
+from exercise.aux_func_views import (
+    get_all_exercises_files,
+    save_exercise_file,
+    update_subject_contents,
+)
+from subject.models import Subject
 from .models import *
 
 from django.contrib.auth import get_user_model
@@ -25,6 +30,10 @@ class ExerciseSerializerCreate(serializers.ModelSerializer):
         use_cases_data = validated_data.pop("use_cases", None)
 
         exercise = Exercise.objects.create(**validated_data)
+
+        subject_instance = Subject.objects.get(name=exercise.subject)
+        new_contents = validated_data.get("contents", "")
+        update_subject_contents(subject_instance, new_contents)
 
         if problem_statement_text:
             save_exercise_file(exercise, problem_statement_text, "problem_statement")
@@ -57,9 +66,14 @@ class ExerciseSerializerCreateTeacher(serializers.ModelSerializer):
         problem_statement_text = validated_data.pop("problem_statement", None)
         exercise = Exercise.objects.create(**validated_data)
 
+        subject_instance = Subject.objects.get(name=exercise.subject)
+        new_contents = validated_data.get("contents", "")
+        update_subject_contents(subject_instance, new_contents)
+
         save_exercise_file(exercise, problem_statement_text, "problem_statement")
 
         return exercise
+
 
 class ExerciseSerializerUpdateTeacher(serializers.ModelSerializer):
     # algunos es para que en swagger no aparezcan como required
@@ -90,10 +104,12 @@ class ExerciseSerializerUpdateTeacher(serializers.ModelSerializer):
 
         instance.save()
 
+        subject_instance = Subject.objects.get(name=instance.subject)
+        new_contents = validated_data.get("contents", "")
+        update_subject_contents(subject_instance, new_contents)
+
         if problem_statement_text:
-            save_exercise_file(
-                instance, problem_statement_text, "problem_statement"
-            )
+            save_exercise_file(instance, problem_statement_text, "problem_statement")
         if example_text:
             save_exercise_file(instance, example_text, "example")
         if use_cases_data:
@@ -105,7 +121,14 @@ class ExerciseSerializerUpdateTeacher(serializers.ModelSerializer):
 class UseCaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = UseCase
-        fields = ("id","input_code", "output_code", "strength", "is_sample", "explanation")
+        fields = (
+            "id",
+            "input_code",
+            "output_code",
+            "strength",
+            "is_sample",
+            "explanation",
+        )
 
 
 class ExerciseSerializerView(serializers.ModelSerializer):
@@ -146,7 +169,7 @@ class ExerciseListSerializerAll(serializers.ModelSerializer):
         return UseCaseSerializer(use_cases, many=True).data
 
 
-class AttemptExerciseSerializer(serializers.ModelSerializer):
+class AttemptExerciseGPTSerializer(serializers.ModelSerializer):
     exercise_id = serializers.PrimaryKeyRelatedField(queryset=Exercise.objects.all())
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=get_user_model().objects.all()
@@ -156,6 +179,7 @@ class AttemptExerciseSerializer(serializers.ModelSerializer):
     initial_feedback = serializers.CharField(
         default="initial feedback", write_only=True
     )
+    attempts = serializers.IntegerField(default=0, write_only=True)
 
     def create(self, validated_data):
         validated_data.pop("code", None)
@@ -171,6 +195,24 @@ class AttemptExerciseSerializer(serializers.ModelSerializer):
             "code",
             "initial_feedback",
             "attempts",
+        ]
+
+
+class AttemptExerciseSerializer(serializers.ModelSerializer):
+    exercise_id = serializers.PrimaryKeyRelatedField(queryset=Exercise.objects.all())
+    time = serializers.CharField(default="10:00:00")
+    code = serializers.CharField(default='print("Hello World")', write_only=True)
+
+    def create(self, validated_data):
+        validated_data.pop("code", None)
+        return AttemptExercise.objects.create(**validated_data)
+
+    class Meta:
+        model = AttemptExercise
+        fields = [
+            "exercise_id",
+            "time",
+            "code",
         ]
 
 
@@ -204,7 +246,6 @@ class UseCaseBulkCreateSerializer(serializers.Serializer):
             UseCase.objects.create(**use_case_data) for use_case_data in use_cases_data
         ]
         return use_cases
-
 
 
 class RankingPerSubjectSerializer(serializers.Serializer):

@@ -29,6 +29,8 @@ router = routers.DefaultRouter()
 api_urlpatterns = [
     path('user/', include('user.urls')),
     path('exercise/', include('exercise.urls')),
+    path('subject/', include('subject.urls')),
+    path('institution/', include('institution.urls')),
     path('swagger<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),
     path('', login_required(schema_view.with_ui('swagger', cache_timeout=0)), name='schema-swagger-ui'),
     path('redoc/', login_required(schema_view.with_ui('redoc', cache_timeout=0)), name='schema-redoc'),

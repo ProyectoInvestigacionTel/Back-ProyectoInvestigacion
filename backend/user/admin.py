@@ -55,13 +55,33 @@ class RolAdmin(admin.ModelAdmin):
 
 
 class TeacherAdmin(admin.ModelAdmin):
-    list_display = ("user", "subject")
-    search_fields = ("user__name", "subject")
+    list_display = ("user", "get_subject")
+    search_fields = ("user__name", "subject__name")
+
+    def get_subject(self, obj):
+        return obj.subject_info.get("subject", "N/A")
+
+    get_subject.short_description = "Subject"
 
 
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ("user", "subject", "section", "semester")
-    search_fields = ("user__name", "subject", "section", "semester")
+    list_display = ("user", "get_subject", "get_section", "get_semester")
+    search_fields = ("user__name", "subject__name")
+
+    def get_section(self, obj):
+        return obj.subject_info.get("section", "N/A")
+
+    get_section.short_description = "Section"
+
+    def get_semester(self, obj):
+        return obj.subject_info.get("semester", "N/A")
+
+    get_semester.short_description = "Semester"
+
+    def get_subject(self, obj):
+        return obj.subject_info.get("subject", "N/A")
+
+    get_subject.short_description = "Subject"
 
 
 admin.site.register(CustomUser, CustomUserAdmin)

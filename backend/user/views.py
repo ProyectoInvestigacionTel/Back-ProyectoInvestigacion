@@ -1,5 +1,10 @@
+from institution.models import Institution
 from teloprogramo.settings import SECRET_KEY
-from .aux_func_views import generate_random_password
+from .aux_func_views import (
+    authenticate_or_create_user,
+    generate_random_password,
+    get_campus_usm,
+)
 from .models import CustomUser, Teacher, Student, Rol
 from .serializers import (
     CustomTokenObtainSerializer,
@@ -165,14 +170,23 @@ class LoginUser(APIView):
             "email": user_serializer.email,
             "name": user_serializer.name,
             "roles": [rol.name for rol in user_serializer.roles.all()],
+            "institution": user_serializer.institution.name,
+            "campus": user_serializer.campus,
         }
+        if user_serializer.roles.filter(name="Student").exists():
+            student = Student.objects.get(user=user_serializer)
+            user_data["subject_name"] = student.subject
+            user_data["semester"] = student.semester
+        elif user_serializer.roles.filter(name="Teacher").exists():
+            teacher = Teacher.objects.get(user=user_serializer)
+            user_data["subject"] = teacher.subject
 
         refresh = RefreshToken.for_user(user)
         refresh = jwt.decode(str(refresh), SECRET_KEY, algorithms=["HS256"])
         refresh["user_data"] = user_data
         refresh = jwt.encode(refresh, SECRET_KEY, algorithm="HS256")
         return redirect("http://localhost:3000/auth?token=" + str(refresh))
-        #return redirect("https://teloprogramo.cl/auth?token=" + str(refresh))
+        # return redirect("https://teloprogramo.cl/auth?token=" + str(refresh))
 
 
 class LoginUserToken(APIView):
@@ -214,53 +228,63 @@ class LoginUserToken(APIView):
             "email": user_serializer.email,
             "name": user_serializer.name,
             "roles": [rol.name for rol in user_serializer.roles.all()],
+            "institution": user_serializer.institution.name,
+            "campus": user_serializer.campus,
         }
-
+        if Student.objects.filter(user=user_serializer).exists():
+            student = Student.objects.get(user=user_serializer)
+            user_data["subject_name"] = student.subject
+            user_data["semester"] = student.semester
+        elif Teacher.objects.filter(user=user_serializer).exists():
+            teacher = Teacher.objects.get(user=user_serializer)
+            user_data["subject"] = teacher.subject
         response_data = {**user_data, **token_data}
         return Response(response_data, status=status.HTTP_200_OK)
 
 
-def authenticate_or_create_user(data):
-    user_id = data.get("lis_person_sourcedid")
-    email = data.get("ext_user_username")
-    name = data.get("lis_person_name_full")
-    roles = data.get("roles")
-
-    user, created = CustomUser.objects.get_or_create(
-        user_id=user_id,
-        email=email,
-        name=(" ".join((name.split("+")))),
-        password=generate_random_password(),
-        institution="USM",
-    )
-
-    # Si el usuario fue creado, asignarle un rol y otros details
-    if created:
-        # Mapear el valor del campo "roles" del JSON a un rol en la base de datos
-        if roles == "Instructor":
-            rol = Rol.objects.get(name=Rol.Teacher)
-        elif roles == "Learner":
-            rol = Rol.objects.get(name=Rol.Student)
-
-        if rol:
-            user.roles.add(rol)
-
-        # Crear un perfil adicional para el usuario basado en su rol
-        context_label = data.get("context_label")
-        subject = context_label.split("_")[3]
-
-        if rol.name == Rol.Student:
-            context_title = data.get("context_title")
-            print("CONTEXT TITLE:", context_title.split("sections:"))
-            section = context_title.split("Paralelos:")[1]
-            semester = context_label.split("_")[0]
-            Student.objects.create(
-                user=user,
-                subject=subject,
-                section=section,
-                semester=semester,
+class GetCoinView(APIView):
+    def get(self, request, user_id):
+        try:
+            user = CustomUser.objects.get(user_id=user_id)
+            return Response({"coins": user.coins}, status=status.HTTP_200_OK)
+        except:
+            return Response(
+                {"error": "No se pudo obtener las monedas"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        elif rol.name == Rol.Teacher:
-            Teacher.objects.create(user=user, subject=subject)
 
-    return user
+
+class AddCoinView(APIView):
+    def patch(self, request, user_id):
+        try:
+            coins = request.data.get("coins")
+            user = CustomUser.objects.get(user_id=user_id)
+            user.coins += coins
+            user.save()
+            return Response(
+                {"user_id": user_id, "coins": user.coins}, status=status.HTTP_200_OK
+            )
+        except:
+            return Response(
+                {"error": "No se pudo agregar las monedas"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class RemoveCoinView(APIView):
+    def patch(self, request, user_id):
+        try:
+            coins = request.data.get("coins")
+            user = CustomUser.objects.get(user_id=user_id)
+            user.coins -= coins
+            if user.coins < 0:
+                user.coins = 0
+            user.save()
+            return Response(
+                {"user_id": user_id, "coins": user.coins}, status=status.HTTP_200_OK
+            )
+        except:
+            return Response(
+                {"error": "No se pudo restar las monedas"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
