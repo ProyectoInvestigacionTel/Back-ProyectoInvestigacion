@@ -31,7 +31,7 @@ def authenticate_or_create_user(data):
     institution_id = Institution.objects.get(
         name="Universidad Técnica Federico Santa María"
     )
-    user, created = CustomUser.objects.create(
+    user, created = CustomUser.objects.get_or_create(
         user_id=user_id,
         email=email,
         name=(" ".join((name.split("+")))),
