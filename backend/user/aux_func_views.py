@@ -12,6 +12,7 @@ def generate_random_password(length=8):
 
 
 def get_campus_usm(section):
+    section = int(section)
     if 1 <= section <= 50:
         return "Casa Central Valparaíso"
     elif 100 <= section <= 150:
