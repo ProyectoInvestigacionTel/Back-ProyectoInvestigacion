@@ -54,19 +54,19 @@ def authenticate_or_create_user(data):
         # Crear un perfil adicional para el usuario basado en su rol
         context_label = data.get("context_label")
         subject = context_label.split("_")[3]
+        context_title = data.get("context_title")
+        print("CONTEXT TITLE:", context_title.split("sections:"))
+        section = context_title.split("Paralelos:")[1]
 
+        CustomUser.objects.filter(user_id=user_id).update(
+            campus=get_campus_usm(section)
+        )
         if rol.name == Rol.Student:
-            context_title = data.get("context_title")
-            print("CONTEXT TITLE:", context_title.split("sections:"))
-            section = context_title.split("Paralelos:")[1]
             semester = context_label.split("_")[0]
             subject_info = {
                 "subject": subject,
                 "section": section,
             }
-            CustomUser.objects.filter(user_id=user_id).update(
-                campus=get_campus_usm(section)
-            )
             Student.objects.create(
                 user=user,
                 subject=subject_info,
