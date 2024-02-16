@@ -5,7 +5,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.views import APIView
-from exercise.swagger_serializers import ExerciseSerializerCreateDocumentation, ExerciseSerializerCreateTeacherDocumentation
+from exercise.swagger_serializers import (
+    ExerciseSerializerCreateDocumentation,
+    ExerciseSerializerCreateTeacherDocumentation,
+)
 from user.models import *
 from user.models import CustomUser
 from .models import *
@@ -14,7 +17,6 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db import transaction
 from drf_yasg import openapi
-
 from django.conf import settings
 from .aux_func_views import *
 from django.db.models.functions import Rank
@@ -30,7 +32,6 @@ from django.db.models import (
     F,
     FloatField,
     ExpressionWrapper,
-    Avg,
     Case,
     When,
     IntegerField,
@@ -38,6 +39,7 @@ from django.db.models import (
 from django.utils import timezone
 from rest_framework.pagination import PageNumberPagination
 import requests
+
 
 class ExerciseView(APIView):
     if settings.DEVELOPMENT_MODE:
@@ -732,85 +734,6 @@ class LastExerciseView(APIView):
             )
 
 
-class UseCasesDeleteView(APIView):
-    if settings.DEVELOPMENT_MODE:
-        authentication_classes = []
-        permission_classes = []
-    else:
-        authentication_classes = [JWTAuthentication]
-        permission_classes = [IsAuthenticated]
-
-    def delete(self, request, exercise_id, use_case_id):
-        try:
-            UseCase.objects.get(id=use_case_id, exercise_id=exercise_id).delete()
-            return Response(
-                {
-                    "message": f"Caso de uso numero {use_case_id} para ejercico {exercise_id} borrado correctamente"
-                },
-                status=status.HTTP_202_ACCEPTED,
-            )
-        except Exercise.DoesNotExist:
-            return Response(
-                {"error": "Caso de uso no encontrado"}, status=status.HTTP_404_NOT_FOUND
-            )
-        except Exception as e:
-            return Response(
-                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-
-class UseCasesListView(APIView):
-    if settings.DEVELOPMENT_MODE:
-        authentication_classes = []
-        permission_classes = []
-    else:
-        authentication_classes = [JWTAuthentication]
-        permission_classes = [IsAuthenticated]
-
-    def get(self, request, exercise_id):
-        try:
-            use_cases = UseCase.objects.filter(exercise_id=exercise_id)
-            serializer = UseCaseSerializer(use_cases, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except UseCase.DoesNotExist:
-            return Response(
-                {"error": "Caso de uso no encontrado"}, status=status.HTTP_404_NOT_FOUND
-            )
-        except Exception as e:
-            return Response(
-                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-
-class UseCasesCreateView(APIView):
-    @swagger_auto_schema(request_body=UseCaseBulkCreateSerializer)
-    def post(self, request, exercise_id):
-        try:
-            exercise = Exercise.objects.get(pk=exercise_id)
-        except Exercise.DoesNotExist:
-            return Response(
-                {"error": "Ejercicio no encontrado"}, status=status.HTTP_404_NOT_FOUND
-            )
-
-        use_cases_data = request.data.get("use_cases")
-        if not isinstance(use_cases_data, list):
-            return Response(
-                {"error": "Formato invalido."}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        use_case_serializers = [UseCaseSerializer(data=data) for data in use_cases_data]
-
-        with transaction.atomic():
-            created_use_cases = []
-            for serializer in use_case_serializers:
-                if serializer.is_valid(raise_exception=True):
-                    use_case = serializer.save(exercise_id=exercise.exercise_id)
-                    created_use_cases.append(use_case)
-
-        created_data = UseCaseSerializer(created_use_cases, many=True).data
-        return Response(created_data, status=status.HTTP_201_CREATED)
-
-
 class AttemptExerciseCreateView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -933,13 +856,13 @@ class RankingPerSubjectView(APIView):
 
 
 class ExerciseGeneratorView(APIView):
-    #authentication_classes = [JWTAuthentication]
-    #permission_classes = [IsAuthenticated]
+    # authentication_classes = [JWTAuthentication]
+    # permission_classes = [IsAuthenticated]
 
     def get(self, request):
         response = requests.post(
-            url='http://localhost:3002',
-            data=json.dumps({"query":"conditionals, loops, medium easy"}),
-            headers={"Content-Type": "application/json"}
+            url="http://localhost:3002",
+            data=json.dumps({"query": "conditionals, loops, medium easy"}),
+            headers={"Content-Type": "application/json"},
         )
         return Response({"message": response}, status=status.HTTP_200_OK)

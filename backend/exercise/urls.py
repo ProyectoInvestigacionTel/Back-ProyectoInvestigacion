@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import include, path
 from .views import *
 
 urlpatterns = [
@@ -58,21 +58,7 @@ urlpatterns = [
         ExerciseUpdateViewTeacher.as_view(),
         name="Exercise-update",
     ),
-    path(
-        "use_cases/<int:exercise_id>/",
-        UseCasesListView.as_view(),
-        name="use-cases-list",
-    ),
-    path(
-        "use_cases/<int:exercise_id>/<int:use_case_id>/",
-        UseCasesDeleteView.as_view(),
-        name="use-case-delete",
-    ),
-    path(
-        "use_cases/<int:exercise_id>",
-        UseCasesCreateView.as_view(),
-        name="use-case-bulk-create",
-    ),
+    
     path(
         "ranking-subject/<str:subject>/",
         RankingPerSubjectView.as_view(),
@@ -82,5 +68,7 @@ urlpatterns = [
         "generator",
         ExerciseGeneratorView.as_view(),
         name="exercise-generator",
-    )
+    ),
+    path('use_cases/',include('exercise.use_case.urls')),
+
 ]

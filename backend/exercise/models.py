@@ -1,9 +1,5 @@
-import json
 from django.db import models
 from django.contrib.auth import get_user_model
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
-import os
 
 
 def code_directory_path(instance, filename):
@@ -58,8 +54,8 @@ class Exercise(models.Model):
     language = models.CharField(default="Spanish", max_length=20)
     subject = models.CharField(max_length=30)
     title = models.CharField(max_length=100)
-    head = models.CharField(max_length=100, null=True,blank=True)
-    tail = models.CharField(max_length=100, null=True,blank=True)
+    head = models.CharField(max_length=100, null=True, blank=True)
+    tail = models.CharField(max_length=100, null=True, blank=True)
     binary = models.BooleanField(default=False)
     constraints = models.TextField()
     input_format = models.TextField()
@@ -121,17 +117,3 @@ class FeedbackDetail(models.Model):
         upload_to=result_use_cases_directory_path, null=True, blank=True
     )
     stars = models.PositiveSmallIntegerField(default=0)
-
-
-class UseCase(models.Model):
-    exercise = models.ForeignKey(
-        Exercise, related_name="use_cases", on_delete=models.CASCADE
-    )
-    input_code = models.TextField()
-    output_code = models.TextField()
-    strength = models.IntegerField(default=0)
-    is_sample = models.BooleanField(default=False)
-    explanation = models.TextField(blank=True, null=True)
-
-    def __str__(self):
-        return f"Use Case for Exercise: {self.exercise.title}"

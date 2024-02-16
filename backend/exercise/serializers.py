@@ -1,5 +1,6 @@
 from rest_framework import serializers
-
+from exercise.use_case.models import UseCase
+from exercise.use_case.serializers import UseCaseSerializer
 from exercise.aux_func_views import (
     get_all_exercises_files,
     save_exercise_file,
@@ -7,7 +8,6 @@ from exercise.aux_func_views import (
 )
 from subject.models import Subject
 from .models import *
-
 from django.contrib.auth import get_user_model
 
 
@@ -118,19 +118,6 @@ class ExerciseSerializerUpdateTeacher(serializers.ModelSerializer):
         return instance
 
 
-class UseCaseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UseCase
-        fields = (
-            "id",
-            "input_code",
-            "output_code",
-            "strength",
-            "is_sample",
-            "explanation",
-        )
-
-
 class ExerciseSerializerView(serializers.ModelSerializer):
     use_cases = serializers.SerializerMethodField()
     files_data = serializers.SerializerMethodField()
@@ -235,17 +222,6 @@ class MessageSerializer(serializers.Serializer):
 
 class conversationSerializer(serializers.Serializer):
     mensajes = MessageSerializer(many=True)
-
-
-class UseCaseBulkCreateSerializer(serializers.Serializer):
-    use_cases = UseCaseSerializer(many=True)
-
-    def create(self, validated_data):
-        use_cases_data = validated_data.pop("use_cases")
-        use_cases = [
-            UseCase.objects.create(**use_case_data) for use_case_data in use_cases_data
-        ]
-        return use_cases
 
 
 class RankingPerSubjectSerializer(serializers.Serializer):
