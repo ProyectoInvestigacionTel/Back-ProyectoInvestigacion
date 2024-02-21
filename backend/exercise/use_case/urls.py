@@ -18,5 +18,5 @@ urlpatterns = [
         UseCasesCreateView.as_view(),
         name="use-case-bulk-create",
     ),
-    path("upload_file", UseCaseUploadView.as_view(), name="upload-file"),
+    path("upload_zip/<int:exercise_id>", UseCaseUploadView.as_view(), name="upload-file"),
 ]

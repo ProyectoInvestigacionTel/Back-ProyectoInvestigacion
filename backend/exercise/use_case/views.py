@@ -12,6 +12,8 @@ from django.db import transaction
 from django.conf import settings
 import zipfile
 from rest_framework.parsers import FileUploadParser
+from drf_yasg import openapi
+from rest_framework.parsers import MultiPartParser
 
 
 class UseCasesDeleteView(APIView):
@@ -65,6 +67,13 @@ class UseCasesListView(APIView):
 
 
 class UseCasesCreateView(APIView):
+    if settings.DEVELOPMENT_MODE:
+        authentication_classes = []
+        permission_classes = []
+    else:
+        authentication_classes = [JWTAuthentication]
+        permission_classes = [IsAuthenticated]
+
     @swagger_auto_schema(request_body=UseCaseBulkCreateSerializer)
     def post(self, request, exercise_id):
         try:
@@ -94,55 +103,71 @@ class UseCasesCreateView(APIView):
 
 
 class UseCaseUploadView(APIView):
-    parser_classes = [FileUploadParser]
+    parser_classes = [MultiPartParser]
+    if settings.DEVELOPMENT_MODE:
+        authentication_classes = []
+        permission_classes = []
+    else:
+        authentication_classes = [JWTAuthentication]
+        permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                "file",
+                in_=openapi.IN_FORM,
+                description="Archivo zip de casos de uso",
+                type=openapi.TYPE_FILE,
+                required=True,
+            ),
+        ],
+        responses={201: UseCaseSerializer(many=True)},
+    )
     def post(self, request, exercise_id, format=None):
+        temp_dir = os.path.join(os.sep, "tmp", "use_cases")
+        input_dir = os.path.join(temp_dir, "input")
+        output_dir = os.path.join(temp_dir, "output")
+
+        for directory in [temp_dir, input_dir, output_dir]:
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+
         try:
-            if "file" not in request.data:
-                return Response(
-                    {"error": "Archivo no subido"}, status=status.HTTP_400_BAD_REQUEST
-                )
-
-            exercise = Exercise.objects.filter(id=exercise_id).first()
-            if not exercise:
-                return Response(
-                    {"error": "Ejercicio no encontado"},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-
-            file_obj = request.data["file"]
-
+            file_obj = request.FILES["file"]
             with zipfile.ZipFile(file_obj, "r") as zip_ref:
-                temp_dir = "/tmp/use_cases/"
                 zip_ref.extractall(temp_dir)
-
-                for input_file_name in os.listdir(temp_dir + "input"):
+                for input_file_name in os.listdir(input_dir):
                     base_name = os.path.splitext(input_file_name)[0]
-                    output_file_name = f"{base_name}.txt"
+                    output_file_name = f"{base_name.replace('input', 'output')}.txt"
+                    output_file_path = os.path.join(output_dir, output_file_name)
 
-                    with open(
-                        os.path.join(temp_dir, "input", input_file_name), "r"
-                    ) as input_file, open(
-                        os.path.join(temp_dir, "output", output_file_name), "r"
-                    ) as output_file:
-                        input_code = input_file.read()
-                        output_code = output_file.read()
-                        UseCase.objects.create(
-                            exercise=exercise,
-                            input_code=input_code,
-                            output_code=output_code,
+                    if os.path.exists(output_file_path):
+                        with open(
+                            os.path.join(input_dir, input_file_name), "r"
+                        ) as input_file, open(output_file_path, "r") as output_file:
+                            input_code = input_file.read()
+                            output_code = output_file.read()
+                            UseCase.objects.create(
+                                exercise_id=exercise_id,
+                                input_code=input_code,
+                                output_code=output_code,
+                            )
+                    else:
+                        raise FileNotFoundError(
+                            f"Output file not found: {output_file_path}"
                         )
 
-            os.remove(temp_dir)
+            use_cases = UseCase.objects.filter(exercise_id=exercise_id)
+            serializer = UseCaseSerializer(use_cases, many=True)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+        except Exercise.DoesNotExist:
             return Response(
-                {
-                    "message": "Casos de uso cargados correctamente",
-                    "use_cases": UseCaseSerializer(
-                        UseCase.objects.filter(exercise=exercise), many=True
-                    ).data,
-                },
-                status=status.HTTP_201_CREATED,
+                {"error": "Ejercicio no encontrado"}, status=status.HTTP_404_NOT_FOUND
+            )
+        except FileNotFoundError as fnf_error:
+            return Response(
+                {"error": str(fnf_error)}, status=status.HTTP_400_BAD_REQUEST
             )
         except Exception as e:
             return Response(

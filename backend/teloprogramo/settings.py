@@ -52,9 +52,9 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     # aplicaciones
     "user",
-    "exercise",
     "subject",
     "institution",
+    "exercise",
 ]
 
 
