@@ -163,16 +163,26 @@ class LoginUser(APIView):
             else:
                 user = CustomUser.objects.get(email=email)
 
-        user_serializer = CustomUser.objects.get(email=user.email)
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
 
+        access_token_payload = jwt.decode(
+            access_token, SECRET_KEY, algorithms=["HS256"]
+        )
+
+        user_serializer = CustomUser.objects.get(email=user.email)
         user_data = {
             "user_id": user_serializer.user_id,
             "email": user_serializer.email,
             "name": user_serializer.name,
-            "roles": [rol.name for rol in user_serializer.roles.all()],
-            "institution": user_serializer.institution.name,
-            "campus": user_serializer.campus,
+            "roles": [role.name for role in user_serializer.roles.all()],
+            "institution": (
+                user_serializer.institution.name if user_serializer.institution else ""
+            ),
+            "campus": user_serializer.campus if user_serializer.campus else "",
         }
+
         if user_serializer.roles.filter(name="Student").exists():
             student = Student.objects.get(user=user_serializer)
             user_data["subject_name"] = student.subject
@@ -181,12 +191,14 @@ class LoginUser(APIView):
             teacher = Teacher.objects.get(user=user_serializer)
             user_data["subject"] = teacher.subject
 
-        refresh = RefreshToken.for_user(user)
-        refresh = jwt.decode(str(refresh), SECRET_KEY, algorithms=["HS256"])
-        refresh["user_data"] = user_data
-        refresh = jwt.encode(refresh, SECRET_KEY, algorithm="HS256")
-        return redirect("http://localhost:3000/auth?token=" + str(refresh))
-        # return redirect("https://teloprogramo.cl/auth?token=" + str(refresh))
+        access_token_payload["user_data"] = user_data
+        access_token = jwt.encode(
+            access_token_payload, SECRET_KEY, algorithm="HS256"
+        )
+
+        # Redirige al usuario con los tokens y user_data incluidos en el accessToken
+        redirect_url = f"http://localhost:3000/auth?accessToken={access_token}&refreshToken={refresh_token}"
+        return redirect(redirect_url)
 
 
 class LoginUserToken(APIView):
