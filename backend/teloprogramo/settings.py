@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "subject",
     "institution",
     "exercise",
+    "exercise.use_case",
 ]
 
 
