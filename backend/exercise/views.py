@@ -763,10 +763,11 @@ class AttemptExerciseCreateView(APIView):
 
         casos_de_uso = load_use_case(exercise_instance.exercise_id)
         print("use_cases: ", casos_de_uso)
-        result = execute_code(code, exercise_instance.head, exercise_instance.tail)
-        print("result: ", result)
-        if "Error" in result:
-            return Response({"error": result}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            result = execute_code(code, exercise_instance.head, exercise_instance.tail)
+            print("result: ", result)
+        except Exception as e:
+            return Response({"Error al ejectuar el codigo": result}, status=status.HTTP_400_BAD_REQUEST)
 
         outputs_esperados = [str(caso["output"]).strip() for caso in casos_de_uso]
 
