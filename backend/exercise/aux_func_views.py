@@ -113,8 +113,7 @@ def compare_outputs_and_calculate_score(spected_outputs, clean_result, binary):
 
 
 def update_attempt(current_attempt, request, exercise_instance, user, score, result):
-    from exercise.serializers import AttemptExerciseSerializer
-
+    from exercise.serializers import AttemptSaveSerializer
     if current_attempt:
         current_attempt.attempts += 1
         current_attempt.score = score
@@ -131,7 +130,7 @@ def update_attempt(current_attempt, request, exercise_instance, user, score, res
             "time": request.data["time"],
             "result": result,
         }
-        attempt_serializer = AttemptExerciseSerializer(data=attemp_data)
+        attempt_serializer = AttemptSaveSerializer(data=attemp_data)
         if attempt_serializer.is_valid():
             attempt_serializer.save()
             return attempt_serializer.instance
