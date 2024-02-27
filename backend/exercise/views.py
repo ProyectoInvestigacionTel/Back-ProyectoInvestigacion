@@ -396,8 +396,6 @@ class InfoExercisesPerUserView(APIView):
                     exercise_data["attempts"][f"attempt_{index}"] = {
                         "score": attempt_detail.score,
                         "date": attempt_detail.date.strftime("%Y-%m-%d %H:%M:%S"),
-                        "code": code,
-                        "conversation": conversation,
                     }
                     if feedback_detail:
                         if feedback_detail.code_file and feedback_detail.code_file:
