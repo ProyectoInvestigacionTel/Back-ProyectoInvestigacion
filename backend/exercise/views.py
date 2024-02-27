@@ -393,19 +393,24 @@ class InfoExercisesPerUserView(APIView):
                     ).first()
 
                     # Leer el código y la conversación desde los archivos si están presentes
-                    if feedback_detail:
-                        if feedback_detail.code_file and feedback_detail.code_file:
-                            with feedback_detail.code_file.open("r") as file:
-                                code = file.read()
-                            with feedback_detail.conversation_file.open("r") as file:
-                                conversation = json.load(file)
-
                     exercise_data["attempts"][f"attempt_{index}"] = {
                         "score": attempt_detail.score,
                         "date": attempt_detail.date.strftime("%Y-%m-%d %H:%M:%S"),
                         "code": code,
                         "conversation": conversation,
                     }
+                    if feedback_detail:
+                        if feedback_detail.code_file and feedback_detail.code_file:
+                            with feedback_detail.code_file.open("r") as file:
+                                code = file.read()
+                            with feedback_detail.conversation_file.open("r") as file:
+                                conversation = json.load(file)
+                            exercise_data["attempts"][f"attempt_{index}"]= {
+                                "code": code,
+                                "conversation": conversation,
+                            }
+
+                    
 
             data.append(format_response_data(exercise_data))
 
@@ -814,45 +819,26 @@ class RankingPerSubjectView(APIView):
     def get(self, request, subject):
         try:
             exercises = Exercise.objects.filter(subject=subject)
-            attempts = (
-                AttemptExercise.objects.filter(exercise_id__in=exercises)
-                .values("user_id")
-                .annotate(
-                    total_score=Sum("score"),
-                    exercises_completed=Count("exercise_id", distinct=True),
-                    correct_attempts=Sum(
-                        Case(
-                            When(result=True, then=1),
-                            default=0,
-                            output_field=IntegerField(),
-                        )
-                    ),
-                    total_attempts=Count("exercise_id"),
-                )
-                .annotate(
-                    success_rate=ExpressionWrapper(
-                        F("correct_attempts") * 100.0 / F("total_attempts"),
-                        output_field=FloatField(),
-                    )
-                )
-                .order_by("-total_score", "-exercises_completed", "-success_rate")
-            )
+            attempts = AttemptExercise.objects.filter(exercise_id__in=exercises).values('user_id').annotate(
+                total_score=Sum('score'),
+                exercises_completed=Count('exercise_id', distinct=True),
+                correct_attempts=Sum(Case(When(result=True, then=1), default=0, output_field=IntegerField())),
+                total_attempts=Count('exercise_id')
+            ).annotate(
+                success_rate=ExpressionWrapper(F('correct_attempts') * 100.0 / F('total_attempts'), output_field=FloatField())
+            ).order_by('-total_score', '-exercises_completed', '-success_rate')
 
             enriched_attempts = [
                 {
                     **attempt,
-                    "user_details": CustomUser.objects.filter(pk=attempt["user_id"])
-                    .values("name", "email")
-                    .first(),
+                    "user_details": get_user_model().objects.filter(pk=attempt["user_id"]).values("name", "email").first(),
                 }
                 for attempt in attempts
             ]
 
             return Response(enriched_attempts, status=status.HTTP_200_OK)
         except Exception as e:
-            return Response(
-                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return Response({"error": "An unexpected error occurred: " + str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ExerciseGeneratorView(APIView):
