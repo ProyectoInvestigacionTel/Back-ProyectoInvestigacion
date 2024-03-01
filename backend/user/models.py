@@ -1,6 +1,8 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
 
+from utils import generate_avatar_url
+
 
 class Rol(models.Model):
     Student = "Student"
@@ -75,6 +77,7 @@ class CustomUser(AbstractBaseUser):
         blank=True,
     )
     campus = models.CharField(max_length=100, null=True)
+    picture = models.ImageField(upload_to='user_photos/', null=True, blank=True)
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["name", "user_id"]
 
@@ -89,6 +92,11 @@ class CustomUser(AbstractBaseUser):
 
     def __str__(self):
         return self.email
+    
+    def save(self, *args, **kwargs):
+        if not self.picture:
+            self.picture = generate_avatar_url(self.name)
+        super(CustomUser, self).save(*args, **kwargs)
 
 
 # Modelo de Teacher,TeacherAssistant y Coordinator

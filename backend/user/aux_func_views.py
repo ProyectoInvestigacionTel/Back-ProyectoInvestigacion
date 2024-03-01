@@ -79,3 +79,6 @@ def authenticate_or_create_user(data):
             Teacher.objects.create(user=user, subject=subject)
 
     return user
+
+
+

@@ -25,3 +25,5 @@ django-unfold == 0.11.0
 
 
 python-dotenv == 1.0.0
+
+pillow==10.2.0

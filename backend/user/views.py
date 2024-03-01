@@ -1,13 +1,12 @@
-from institution.models import Institution
 from teloprogramo.settings import SECRET_KEY
 from .aux_func_views import (
     authenticate_or_create_user,
-    generate_random_password,
-    get_campus_usm,
 )
+from drf_yasg import openapi
 from .models import CustomUser, Teacher, Student, Rol
 from .serializers import (
     CustomTokenObtainSerializer,
+    CustomUserPhotoSerializer,
     StudentPOSTSerializer,
     TeacherPOSTSerializer,
     StudentGETSerializer,
@@ -22,11 +21,12 @@ from drf_yasg.utils import swagger_auto_schema
 from rest_framework_simplejwt.tokens import RefreshToken
 from .backend import authenticateUser
 from rest_framework import status
-from rest_framework.parsers import JSONParser, FormParser
+from rest_framework.parsers import JSONParser, FormParser,MultiPartParser
 from django.db import transaction
 from django.shortcuts import redirect
 import jwt
-
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 class PostStudentView(APIView):
     @swagger_auto_schema(request_body=StudentPOSTSerializer)
@@ -298,5 +298,45 @@ class RemoveCoinView(APIView):
         except:
             return Response(
                 {"error": "No se pudo restar las monedas"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+
+class UserPhotoUploadView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                name='picture',
+                in_=openapi.IN_FORM,
+                type=openapi.TYPE_FILE,
+                description='Foto de perfil del usuario',
+                required=True,
+            ),
+        ],
+        responses={200: openapi.Response('Foto subida correctamente')}
+    )
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        serializer = CustomUserPhotoSerializer(user, data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class UserPhotoView(APIView):
+    def get(self, request, user_id):
+        try:
+            user = CustomUser.objects.get(user_id=user_id)
+            return Response({"picture": user.picture.url}, status=status.HTTP_200_OK)
+        except:
+            return Response(
+                {"error": "No se pudo obtener la foto"},
                 status=status.HTTP_400_BAD_REQUEST,
             )

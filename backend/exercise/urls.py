@@ -9,6 +9,13 @@ urlpatterns = [
         ExerciseListView.as_view(),
     ),
     path(
+        "list/<str:subject>",
+        ExerciseListSubjectView.as_view(),
+        name="Exercise-list-subject",
+    ),
+    path('detail/<int:exercise_id>', ExerciseDeleteView.as_view(), name='exercise-detelete')
+    ,
+    path(
         "attempt_gpt", AttemptExerciseCreateGPTView.as_view(), name="Register-attempt"
     ),
     path("attempt", AttemptExerciseCreateView.as_view(), name="Attempt-list"),

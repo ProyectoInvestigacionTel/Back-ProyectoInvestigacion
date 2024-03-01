@@ -22,7 +22,7 @@ class CustomUserGETSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ("user_id", "email", "name", "roles", "institution")
+        fields = ("user_id", "email", "name", "roles", "institution","picture")
 
     def get_roles(self, obj):
         return ", ".join([rol.name for rol in obj.roles.all()])
@@ -63,3 +63,10 @@ class StudentGETSerializer(serializers.ModelSerializer):
 class CustomTokenObtainSerializer(serializers.Serializer):
     email = serializers.EmailField(default="admin@usm.cl")
     password = serializers.CharField(write_only=True, default="admin")
+
+
+
+class CustomUserPhotoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['picture']
