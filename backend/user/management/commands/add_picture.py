@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
-from models import CustomUser
-from utils import generate_avatar_url
+from user.models import CustomUser
+from user.utils import generate_avatar_url
 
 class Command(BaseCommand):
     help = 'Actualiza los avatares de los usuarios sin imagen de perfil'

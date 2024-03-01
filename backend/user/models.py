@@ -1,7 +1,7 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
 
-from utils import generate_avatar_url
+from user.utils import generate_avatar_url
 
 
 class Rol(models.Model):
