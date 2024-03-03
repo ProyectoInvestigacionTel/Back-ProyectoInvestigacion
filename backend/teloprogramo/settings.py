@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+import datetime 
 from pathlib import Path
 from dotenv import load_dotenv
 import os
@@ -167,6 +168,7 @@ REST_FRAMEWORK = {
 # Simple JWT
 SIMPLE_JWT = {
     "USER_ID_FIELD": "user_id",
+    "ACCESS_TOKEN_LIFETIME": datetime.timedelta(hours=1),
 }
 
 SWAGGER_SETTINGS = {

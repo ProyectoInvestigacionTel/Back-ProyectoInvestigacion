@@ -80,18 +80,15 @@ def load_use_case(exercise_id):
     ]
 
 
-def execute_code(code, head, tail):
-    print_warning = "Warning: 'print' found in the execution setup (head/tail)."
-    if head and contains_print_statement(head):
-        print(print_warning + " In head.", flush=True)
-    if tail and contains_print_statement(tail):
-        print(print_warning + " In tail.", flush=True)
-
+def execute_code(code, head, tail, input_cases):
+    print("Code to execute:", code, flush=True)
+    print("Head:", head, flush=True)
+    print("Tail:", tail, flush=True)
     final_code = "\n".join(filter(None, [head, code, tail]))
     print("Final code:", final_code, flush=True)
-    full_output = run_code_in_container(final_code)
+    full_output = run_code_in_container(final_code, input_cases=input_cases)
 
-    return full_output.strip()
+    return full_output
 
 
 def compare_outputs_and_calculate_score(spected_outputs, clean_result, binary):

@@ -329,8 +329,10 @@ class AttemptExerciseCreateGPTView(APIView):
 
         casos_de_uso = load_use_case(exercise_instance.exercise_id)
         print("use_cases: ", casos_de_uso)
-        result = execute_code(code, exercise_instance.head, exercise_instance.tail)
-        print("result: ", result)
+        result = execute_code(
+            code, exercise_instance.head, exercise_instance.tail, casos_de_uso
+        )
+        print("result: ", result, flush=True)
         if "Error" in result:
             return Response({"error": result}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -808,18 +810,25 @@ class AttemptExerciseCreateView(APIView):
 
         casos_de_uso = load_use_case(exercise_instance.exercise_id)
         print("use_cases: ", casos_de_uso)
-        result = execute_code(code, exercise_instance.head, exercise_instance.tail)
-        print("result: ", result)
+        result = execute_code(
+            code, exercise_instance.head, exercise_instance.tail, casos_de_uso
+        )
+        print("result: ", result, flush=True)
         if "Error" in result:
             return Response({"error": result}, status=status.HTTP_400_BAD_REQUEST)
 
         outputs_esperados = [str(caso["output"]).strip() for caso in casos_de_uso]
+        result_limpios = []
+        for output in result:
 
-        result_limpio = [linea.strip() for linea in result.splitlines()]
+            output_limpio = output.strip().rstrip("\n")
+            result_limpios.append(output_limpio)
+
+        print("Resultados limpios:", result_limpios, flush=True)
         score, resuelto = compare_outputs_and_calculate_score(
-            outputs_esperados, result_limpio, exercise_instance.binary
+            outputs_esperados, result_limpios, exercise_instance.binary
         )
-        results_json = generate_result_json(outputs_esperados, result_limpio)
+        results_json = generate_result_json(outputs_esperados, result_limpios)
 
         attempt_instance = update_attempt(
             attempt_existente, request, exercise_instance, user, score, resuelto
@@ -888,7 +897,7 @@ class RankingPerSubjectView(APIView):
                     **attempt,
                     "user_details": get_user_model()
                     .objects.filter(pk=attempt["user_id"])
-                    .values("name", "email","picture")
+                    .values("name", "email", "picture")
                     .first(),
                 }
                 for attempt in attempts
