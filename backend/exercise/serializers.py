@@ -201,10 +201,13 @@ class AttemptExerciseSerializer(serializers.ModelSerializer):
             "time",
             "code",
         ]
+
+
 class AttemptSaveSerializer(serializers.ModelSerializer):
     class Meta:
         model = AttemptExercise
         fields = "__all__"
+
 
 class AttemptDetailSerializer(serializers.ModelSerializer):
     class Meta:

@@ -14,6 +14,6 @@ urlpatterns = [
     path("add_coin/<str:user_id>", AddCoinView.as_view(), name="add_coin"),
     path("get_coin/<str:user_id>", GetCoinView.as_view(), name="get_coin"),
     path("remove_coins/<str:user_id>", RemoveCoinView.as_view(), name="remove_coin"),
-    path('upload-picture/', UserPhotoUploadView.as_view(), name='upload-picture'),
-    path('get-picture/<str:user_id>', UserPhotoView.as_view(), name='get-picture'),
+    path("upload-picture/", UserPhotoUploadView.as_view(), name="upload-picture"),
+    path("get-picture/<str:user_id>", UserPhotoView.as_view(), name="get-picture"),
 ]

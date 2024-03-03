@@ -10,6 +10,7 @@ import os
 from django.core.files.storage import default_storage
 from exercise.use_case.models import UseCase
 
+
 def contains_print_statement(code):
     return re.search(r"print\((.*?)\)", code)
 
@@ -111,6 +112,7 @@ def compare_outputs_and_calculate_score(spected_outputs, clean_result, binary):
 
 def update_attempt(current_attempt, request, exercise_instance, user, score, result):
     from exercise.serializers import AttemptSaveSerializer
+
     if current_attempt:
         current_attempt.attempts += 1
         current_attempt.score = score

@@ -21,12 +21,13 @@ from drf_yasg.utils import swagger_auto_schema
 from rest_framework_simplejwt.tokens import RefreshToken
 from .backend import authenticateUser
 from rest_framework import status
-from rest_framework.parsers import JSONParser, FormParser,MultiPartParser
+from rest_framework.parsers import JSONParser, FormParser, MultiPartParser
 from django.db import transaction
 from django.shortcuts import redirect
 import jwt
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
+
 
 class PostStudentView(APIView):
     @swagger_auto_schema(request_body=StudentPOSTSerializer)
@@ -192,9 +193,7 @@ class LoginUser(APIView):
             user_data["subject"] = teacher.subject
 
         access_token_payload["user_data"] = user_data
-        access_token = jwt.encode(
-            access_token_payload, SECRET_KEY, algorithm="HS256"
-        )
+        access_token = jwt.encode(access_token_payload, SECRET_KEY, algorithm="HS256")
 
         # Redirige al usuario con los tokens y user_data incluidos en el accessToken
         redirect_url = f"http://localhost:3000/auth?accessToken={access_token}&refreshToken={refresh_token}"
@@ -302,22 +301,22 @@ class RemoveCoinView(APIView):
             )
 
 
-
 class UserPhotoUploadView(APIView):
     parser_classes = (MultiPartParser, FormParser)
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
+
     @swagger_auto_schema(
         manual_parameters=[
             openapi.Parameter(
-                name='picture',
+                name="picture",
                 in_=openapi.IN_FORM,
                 type=openapi.TYPE_FILE,
-                description='Foto de perfil del usuario',
+                description="Foto de perfil del usuario",
                 required=True,
             ),
         ],
-        responses={200: openapi.Response('Foto subida correctamente')}
+        responses={200: openapi.Response("Foto subida correctamente")},
     )
     def post(self, request, *args, **kwargs):
         user = request.user
@@ -328,7 +327,7 @@ class UserPhotoUploadView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 
 class UserPhotoView(APIView):
     def get(self, request, user_id):

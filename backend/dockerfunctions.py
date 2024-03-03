@@ -54,7 +54,7 @@ def run_code_in_container(
                 cmd=f"sh -c 'timeout {timeout_seconds} python {code_filename} < {input_filename}'",
                 user="appuser",
             )
-            print(exec_result,flush=True)
+            print(exec_result, flush=True)
             if exec_result.exit_code == 0:
                 result = exec_result.output.decode("utf-8")
             else:
@@ -64,10 +64,10 @@ def run_code_in_container(
             results.append(result)
 
             # Limpieza: elimina el archivo de entrada actual
-            #container.exec_run(cmd=f"rm {input_filename}", user="appuser")
+            # container.exec_run(cmd=f"rm {input_filename}", user="appuser")
 
         # Opcional: Limpieza del archivo .py
-        #container.exec_run(cmd=f"rm {code_filename}", user="appuser")
+        # container.exec_run(cmd=f"rm {code_filename}", user="appuser")
 
     except NotFound:
         return ["Error: Contenedor 'run_code' no encontrado."]

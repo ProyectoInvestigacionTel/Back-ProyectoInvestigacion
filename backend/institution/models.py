@@ -14,6 +14,6 @@ class Institution(models.Model):
     website = models.URLField(max_length=100)
     description = models.TextField()
     campus = models.JSONField()
-    
+
     def __str__(self):
         return self.institution_id

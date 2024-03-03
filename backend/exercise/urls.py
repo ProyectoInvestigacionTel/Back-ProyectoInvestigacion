@@ -13,8 +13,11 @@ urlpatterns = [
         ExerciseListSubjectView.as_view(),
         name="Exercise-list-subject",
     ),
-    path('detail/<int:exercise_id>', ExerciseDeleteView.as_view(), name='exercise-detelete')
-    ,
+    path(
+        "detail/<int:exercise_id>",
+        ExerciseDeleteView.as_view(),
+        name="exercise-detelete",
+    ),
     path(
         "attempt_gpt", AttemptExerciseCreateGPTView.as_view(), name="Register-attempt"
     ),
@@ -65,7 +68,6 @@ urlpatterns = [
         ExerciseUpdateViewTeacher.as_view(),
         name="Exercise-update",
     ),
-    
     path(
         "ranking-subject/<str:subject>/",
         RankingPerSubjectView.as_view(),
@@ -76,6 +78,5 @@ urlpatterns = [
         ExerciseGeneratorView.as_view(),
         name="exercise-generator",
     ),
-    path('use_cases/',include('exercise.use_case.urls')),
-
+    path("use_cases/", include("exercise.use_case.urls")),
 ]

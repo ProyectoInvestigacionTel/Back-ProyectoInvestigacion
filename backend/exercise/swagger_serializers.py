@@ -1,7 +1,10 @@
 from rest_framework import serializers
 from .models import *
+
+
 class ExerciseSerializerCreateTeacherDocumentation(serializers.ModelSerializer):
     problem_statement = serializers.CharField(required=True)
+
     class Meta:
         model = Exercise
         fields = [
@@ -23,7 +26,4 @@ class ExerciseSerializerCreateDocumentation(serializers.ModelSerializer):
 
     class Meta:
         model = Exercise
-        exclude = [
-            "date",
-            "user"
-        ]
+        exclude = ["date", "user"]

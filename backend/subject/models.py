@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class Subject(models.Model):
     class Meta:
         db_table = "subject"
@@ -9,7 +10,10 @@ class Subject(models.Model):
     description = models.TextField()
     contents = models.TextField()
     institution = models.ForeignKey(
-        "institution.Institution", on_delete=models.DO_NOTHING, db_column="institution_id"
+        "institution.Institution",
+        on_delete=models.DO_NOTHING,
+        db_column="institution_id",
     )
+
     def __str__(self):
         return self.name

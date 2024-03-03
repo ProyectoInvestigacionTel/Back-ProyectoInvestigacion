@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from exercise.use_case.models import UseCase
 
+
 class UseCaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = UseCase

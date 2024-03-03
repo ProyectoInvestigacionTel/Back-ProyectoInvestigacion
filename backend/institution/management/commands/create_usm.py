@@ -6,7 +6,9 @@ class Command(BaseCommand):
     help = "Crea la institución USM"
 
     def handle(self, *args, **kwargs):
-        if not Institution.objects.filter(name="Universidad Técnica Federico Santa María").exists():
+        if not Institution.objects.filter(
+            name="Universidad Técnica Federico Santa María"
+        ).exists():
             campus = {
                 "Casa Central": {
                     "address": "Av. España 1680",

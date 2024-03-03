@@ -22,7 +22,7 @@ class CustomUserGETSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ("user_id", "email", "name", "roles", "institution","picture")
+        fields = ("user_id", "email", "name", "roles", "institution", "picture")
 
     def get_roles(self, obj):
         return ", ".join([rol.name for rol in obj.roles.all()])
@@ -31,6 +31,7 @@ class CustomUserGETSerializer(serializers.ModelSerializer):
 class TeacherPOSTSerializer(serializers.ModelSerializer):
     usuario = CustomUserPOSTSerializer()
     subject = serializers.JSONField()
+
     class Meta:
         model = Teacher
         fields = ("usuario", "subject")
@@ -39,6 +40,7 @@ class TeacherPOSTSerializer(serializers.ModelSerializer):
 class TeacherGETSerializer(serializers.ModelSerializer):
     usuario = CustomUserGETSerializer()
     subject = serializers.JSONField()
+
     class Meta:
         model = Teacher
         fields = ("usuario", "subject")
@@ -47,6 +49,7 @@ class TeacherGETSerializer(serializers.ModelSerializer):
 class StudentPOSTSerializer(serializers.ModelSerializer):
     usuario = CustomUserPOSTSerializer()
     subject = serializers.JSONField()
+
     class Meta:
         model = Student
         fields = ("usuario", "subject", "semester")
@@ -54,7 +57,8 @@ class StudentPOSTSerializer(serializers.ModelSerializer):
 
 class StudentGETSerializer(serializers.ModelSerializer):
     usuario = CustomUserGETSerializer()
-    subject = serializers.JSONField()   
+    subject = serializers.JSONField()
+
     class Meta:
         model = Student
         fields = ("usuario", "subject", "semester")
@@ -65,8 +69,7 @@ class CustomTokenObtainSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, default="admin")
 
 
-
 class CustomUserPhotoSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['picture']
+        fields = ["picture"]

@@ -10,7 +10,9 @@ class Command(BaseCommand):
         # Aquí colocas la lógica para crear tu usuario
         # Por ejemplo, crear un superusuario:
         if not Subject.objects.filter(name="TEL-101").exists():
-            institution_id = Institution.objects.get(name="Universidad Técnica Federico Santa María")
+            institution_id = Institution.objects.get(
+                name="Universidad Técnica Federico Santa María"
+            )
             Subject.objects.create(
                 name="TEL-101",
                 description="Iniciacion a la programación",

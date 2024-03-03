@@ -1,6 +1,7 @@
 from django.db import models
 from exercise.models import Exercise
 
+
 class UseCase(models.Model):
     exercise = models.ForeignKey(
         Exercise, related_name="use_cases", on_delete=models.CASCADE
