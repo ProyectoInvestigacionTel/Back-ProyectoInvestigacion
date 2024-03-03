@@ -146,25 +146,32 @@ class ExerciseCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(request_body=ExerciseSerializerCreateDocumentation)
+    @transaction.atomic
     def post(self, request):
-        user = request.user
-        print("user: ", user.pk, flush=True)
-        data = request.data.copy()
-        data["user"] = user.pk
-        print("data: ", data, flush=True)
-        serializer = ExerciseSerializerCreate(data=data)
+        try:
+            user = request.user
+            print("user: ", user.pk, flush=True)
+            data = request.data.copy()
+            data["user"] = user.pk
+            print("data: ", data, flush=True)
+            serializer = ExerciseSerializerCreate(data=data)
 
-        if serializer.is_valid():
-            exercise = serializer.save()
+            if serializer.is_valid():
+                exercise = serializer.save()
+                return Response(
+                    {
+                        "message": "Ejercicio creado correctamente",
+                        "exercise_id": exercise.pk,
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
+
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
             return Response(
-                {
-                    "message": "Ejercicio creado correctamente",
-                    "exercise_id": exercise.pk,
-                },
-                status=status.HTTP_201_CREATED,
+                {"error": "Ocurrió un error inesperado: " + str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ExerciseCreateViewTeacher(APIView):
@@ -210,6 +217,7 @@ class ExerciseUpdateViewTeacher(APIView):
         permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(request_body=ExerciseSerializerUpdateTeacher)
+    @transaction.atomic
     def put(self, request, exercise_id):
         try:
             user = request.user
