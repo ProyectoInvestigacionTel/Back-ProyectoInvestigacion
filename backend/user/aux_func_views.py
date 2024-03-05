@@ -3,6 +3,7 @@ import string
 from institution.models import Institution
 
 from user.models import CustomUser, Rol, Student, Teacher
+from django.contrib.auth import get_user_model
 
 
 def generate_random_password(length=8):
@@ -29,53 +30,37 @@ def authenticate_or_create_user(data):
     name = data.get("lis_person_name_full")
     roles = data.get("roles")
 
-    institution_id = Institution.objects.get(
+    institution, _ = Institution.objects.get_or_create(
         name="Universidad Técnica Federico Santa María"
     )
-    user, created = CustomUser.objects.get_or_create(
-        user_id=user_id,
-        email=email,
-        name=(" ".join((name.split("+")))),
-        password=generate_random_password(),
-        institution=institution_id,
+    user, created = get_user_model().objects.get_or_create(
+        username=user_id,
+        defaults={
+            "email": email,
+            "first_name": name,
+            "password": generate_random_password(),
+            "institution": institution,
+        },
     )
 
-    # Si el usuario fue creado, asignarle un rol y otros details
-    if created:
-        # Mapear el valor del campo "roles" del JSON a un rol en la base de datos
-        if roles == "Instructor":
-            rol = Rol.objects.get(name=Rol.Teacher)
-        elif roles == "Learner":
-            rol = Rol.objects.get(name=Rol.Student)
+    context_label = data.get("context_label")
+    subject = context_label.split("_")[3]
+    context_title = data.get("context_title")
+    sections = [
+        section.strip() for section in context_title.split("Paralelos:")[1].split(",")
+    ]
 
-        if rol:
-            user.roles.add(rol)
+    subject_info = {"subject": subject, "sections": sections}
 
-        # Crear un perfil adicional para el usuario basado en su rol
-        context_label = data.get("context_label")
-        subject = context_label.split("_")[3]
-        context_title = data.get("context_title")
-        print("CONTEXT TITLE:", context_title.split("sections:"))
-        section = context_title.split("Paralelos:")[1]
-
-        CustomUser.objects.filter(user_id=user_id).update(
-            campus=get_campus_usm(section)
+    if "Instructor" in roles:
+        Teacher.objects.update_or_create(
+            user=user,
+            defaults={"subject_info": subject_info},
         )
-        if rol.name == Rol.Student:
-            semester = context_label.split("_")[0]
-            subject_info = {
-                "subject": subject,
-                "section": section,
-            }
-            Student.objects.create(
-                user=user,
-                subject=subject_info,
-                semester=semester,
-            )
-        elif rol.name == Rol.Teacher:
-            subject_info = {
-                subject: subject,
-            }
-            Teacher.objects.create(user=user, subject=subject)
+    elif "Learner" in roles:
+        Student.objects.update_or_create(
+            user=user,
+            defaults={"subject_info": subject_info},
+        )
 
     return user
