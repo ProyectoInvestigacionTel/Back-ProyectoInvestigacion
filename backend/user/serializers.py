@@ -29,39 +29,39 @@ class CustomUserGETSerializer(serializers.ModelSerializer):
 
 
 class TeacherPOSTSerializer(serializers.ModelSerializer):
-    usuario = CustomUserPOSTSerializer()
+    user = CustomUserPOSTSerializer()
     subject = serializers.JSONField()
 
     class Meta:
         model = Teacher
-        fields = ("usuario", "subject")
+        fields = ("user", "subject")
 
 
 class TeacherGETSerializer(serializers.ModelSerializer):
-    usuario = CustomUserGETSerializer()
+    user = CustomUserGETSerializer()
     subject = serializers.JSONField()
 
     class Meta:
         model = Teacher
-        fields = ("usuario", "subject")
+        fields = ("user", "subject")
 
 
 class StudentPOSTSerializer(serializers.ModelSerializer):
-    usuario = CustomUserPOSTSerializer()
+    user = CustomUserPOSTSerializer()
     subject = serializers.JSONField()
 
     class Meta:
         model = Student
-        fields = ("usuario", "subject", "semester")
+        fields = ("user", "subject", "semester")
 
 
 class StudentGETSerializer(serializers.ModelSerializer):
-    usuario = CustomUserGETSerializer()
+    user = CustomUserGETSerializer()
     subject = serializers.JSONField()
 
     class Meta:
         model = Student
-        fields = ("usuario", "subject", "semester")
+        fields = ("user", "subject", "semester")
 
 
 class CustomTokenObtainSerializer(serializers.Serializer):

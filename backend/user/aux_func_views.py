@@ -33,11 +33,11 @@ def authenticate_or_create_user(data):
     institution, _ = Institution.objects.get_or_create(
         name="Universidad Técnica Federico Santa María"
     )
-    user, created = get_user_model().objects.get_or_create(
-        username=user_id,
+    user, created = CustomUser.objects.get_or_create(
+        user_id=user_id,
         defaults={
             "email": email,
-            "first_name": name,
+            "name": name,
             "password": generate_random_password(),
             "institution": institution,
         },
@@ -51,16 +51,20 @@ def authenticate_or_create_user(data):
     ]
 
     subject_info = {"subject": subject, "sections": sections}
-
+    print("roles", roles, flush=True)
     if "Instructor" in roles:
         Teacher.objects.update_or_create(
             user=user,
-            defaults={"subject_info": subject_info},
+            defaults={"subject": subject_info},
         )
+        user.roles.add(Rol.objects.get(name=Rol.Teacher))
     elif "Learner" in roles:
         Student.objects.update_or_create(
             user=user,
-            defaults={"subject_info": subject_info},
+            defaults={"subject": subject_info},
         )
+        user.roles.add(Rol.objects.get(name=Rol.Student))
+
+    user.save()
 
     return user

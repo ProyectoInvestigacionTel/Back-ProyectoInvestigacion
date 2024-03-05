@@ -111,20 +111,26 @@ class PostTeacherView(APIView):
 class UserView(APIView):
     def get(self, request, email, *args, **kwargs):
         try:
-            usuario = CustomUser.objects.get(email=email)
+            user= CustomUser.objects.get(email=email)
         except CustomUser.DoesNotExist:
-            raise Http404
-
+            return Response(
+                {"error": "Usuario no encontrado"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if (
-            usuario.roles.filter(name="Teacher").exists()
-            or usuario.roles.filter(name="TeacherAssistant").exists()
-            or usuario.roles.filter(name="Coordinator").exists()
+            user.roles.filter(name="Teacher").exists()
+            or user.roles.filter(name="TeacherAssistant").exists()
+            or user.roles.filter(name="Coordinator").exists()
         ):
-            serializer = TeacherGETSerializer(usuario)
-        elif usuario.roles.filter(name="Student").exists():
-            serializer = StudentGETSerializer(usuario)
-        elif usuario.roles.filter(name="ADMIN").exists():
-            serializer = CustomUserGETSerializer(usuario)
+
+            teacher_instance = Teacher.objects.get(user=user)
+            serializer = TeacherGETSerializer(teacher_instance)
+
+        elif user.roles.filter(name="Student").exists():
+            student_instance = Student.objects.get(user=user)
+            serializer = StudentGETSerializer(student_instance)
+        elif user.roles.filter(name="ADMIN").exists():
+            serializer = CustomUserGETSerializer(user)
         else:
             return Response(
                 {"error": "Rol de usuario no válido"},
@@ -182,14 +188,13 @@ class LoginUser(APIView):
                 user_serializer.institution.name if user_serializer.institution else ""
             ),
             "campus": user_serializer.campus if user_serializer.campus else "",
-            "section": user_serializer.section if user_serializer.section else "",
             "picture": user_serializer.picture.url if user_serializer.picture else "",
         }
 
         if user_serializer.roles.filter(name="Student").exists():
             student = Student.objects.get(user=user_serializer)
-            user_data["subject_name"] = student.subject
             user_data["semester"] = student.semester
+            user_data["subject"] = student.subject
         elif user_serializer.roles.filter(name="Teacher").exists():
             teacher = Teacher.objects.get(user=user_serializer)
             user_data["subject"] = teacher.subject
