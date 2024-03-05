@@ -112,9 +112,10 @@ class ExerciseSerializerUpdateTeacher(serializers.ModelSerializer):
             save_exercise_file(instance, problem_statement_text, "problem_statement")
         if example_text:
             save_exercise_file(instance, example_text, "example")
+        
         if use_cases_data:
             for use_case_data in use_cases_data:
-                UseCase.objects.create(exercise=instance, **use_case_data)
+                UseCase.objects.create(exercise_id=instance, **use_case_data)
         return instance
 
 
@@ -140,12 +141,14 @@ class ExerciseSerializerView(serializers.ModelSerializer):
 class ExerciseListSerializerAll(serializers.ModelSerializer):
     files_data = serializers.SerializerMethodField()
     use_cases = serializers.SerializerMethodField()
+    success_rate = serializers.SerializerMethodField()
 
     class Meta:
         model = Exercise
         exclude = [
             "problem_statement",
             "example",
+            
         ]
 
     def get_files_data(self, obj):
@@ -154,6 +157,16 @@ class ExerciseListSerializerAll(serializers.ModelSerializer):
     def get_use_cases(self, obj):
         use_cases = UseCase.objects.filter(exercise=obj)
         return UseCaseSerializer(use_cases, many=True).data
+
+    def get_success_rate(self, obj):
+        attempts = AttemptExercise.objects.filter(exercise_id=obj)
+        total_attempts = attempts.count()
+        successful_attempts = attempts.filter(result=True).count()
+        if total_attempts > 0:
+            success_rate = (successful_attempts / total_attempts) * 100
+            return success_rate
+        else:
+            return 0
 
 
 class AttemptExerciseGPTSerializer(serializers.ModelSerializer):
@@ -243,5 +256,3 @@ class ExerciseRankingSerializer(serializers.Serializer):
     title = serializers.CharField()
     total_attempts = serializers.IntegerField()
     completion_rate = serializers.FloatField()
-
-

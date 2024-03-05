@@ -113,7 +113,7 @@ class UseCasePutView(APIView):
     @swagger_auto_schema(request_body=UseCaseSerializer)
     def put(self, request, exercise_id, use_case_id):
         try:
-            use_case = UseCase.objects.get(use_case_id=use_case_id, exercise_id=exercise_id)
+            use_case = UseCase.objects.get(id=use_case_id, exercise_id=exercise_id)
             serializer = UseCaseSerializer(use_case, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()

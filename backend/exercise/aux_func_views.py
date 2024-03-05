@@ -9,7 +9,39 @@ from .models import *
 import os
 from django.core.files.storage import default_storage
 from exercise.use_case.models import UseCase
+from subject.models import Subject
 
+def calculate_success_rate_for_difficulties(user_id, exercises):
+    difficulty_success_rates = {}
+    for difficulty in ['Facil', 'Medio', 'Dificil']:
+        difficulty_exercises = exercises.filter(difficulty=difficulty)
+        difficulty_success_rates[difficulty] = calculate_success_rate(
+            difficulty_exercises, user_id
+        )
+    return difficulty_success_rates
+
+def calculate_success_rate_for_contents(user_id, exercises, subject_name):
+    content_success_rates = {}
+    subject_instance = Subject.objects.get(name=subject_name)
+    contents = subject_instance.contents.split(',')
+    for content in contents:
+        content_exercises = exercises.filter(contents__icontains=content)
+        content_success_rates[content] = calculate_success_rate(
+            content_exercises, user_id
+        )
+    return content_success_rates
+
+def calculate_success_rate(exercises, user_id):
+    correct_attempts = AttemptExercise.objects.filter(
+        exercise_id__in=exercises,
+        user_id=user_id,
+        result=True
+    ).count()
+    total_attempts = AttemptExercise.objects.filter(
+        exercise_id__in=exercises,
+        user_id=user_id
+    ).count()
+    return (correct_attempts / total_attempts * 100) if total_attempts else 0
 
 def contains_print_statement(code):
     return re.search(r"print\((.*?)\)", code)
@@ -266,7 +298,7 @@ def format_entry_data(data):
 def save_exercise_file(exercise: Exercise, file_content: str, category: str):
     if not exercise.pk:
         raise ValueError("Exercise must have a primary key before saving files.")
-
+    
     file_extension = ".txt"
     filename = f"{category}_{exercise.pk}{file_extension}"
     directory = os.path.join("exercises", str(exercise.pk))
@@ -274,6 +306,10 @@ def save_exercise_file(exercise: Exercise, file_content: str, category: str):
 
     full_media_path = os.path.join(settings.MEDIA_ROOT, directory)
     os.makedirs(full_media_path, exist_ok=True)
+    
+    existing_file_path = getattr(exercise, category).name
+    if default_storage.exists(existing_file_path):
+        default_storage.delete(existing_file_path)
 
     default_storage.save(full_path, ContentFile(file_content))
 
@@ -283,6 +319,7 @@ def save_exercise_file(exercise: Exercise, file_content: str, category: str):
 
     print(f'File saved to "{full_path}"', flush=True)
     return full_path
+
 
 
 def update_subject_contents(subject_instance, new_contents):
