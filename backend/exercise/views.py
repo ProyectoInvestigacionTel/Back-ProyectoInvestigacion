@@ -39,6 +39,7 @@ from django.db.models import (
 from django.utils import timezone
 from rest_framework.pagination import PageNumberPagination
 import requests
+from django.core.exceptions import ObjectDoesNotExist
 
 
 class ExerciseView(APIView):
@@ -930,38 +931,56 @@ class RankingPerSubjectView(APIView):
     def get(self, request, subject):
         try:
             exercises = Exercise.objects.filter(subject=subject)
-            attempts = AttemptExercise.objects.filter(exercise_id__in=exercises) \
-                .values("user_id") \
+            attempts = (
+                AttemptExercise.objects.filter(exercise_id__in=exercises)
+                .values("user_id")
                 .annotate(
                     total_score=Sum("score"),
                     exercises_completed=Count("exercise_id", distinct=True),
                     correct_attempts=Sum(
-                        Case(When(result=True, then=1), default=0, output_field=IntegerField())
+                        Case(
+                            When(result=True, then=1),
+                            default=0,
+                            output_field=IntegerField(),
+                        )
                     ),
-                    total_attempts=Count("exercise_id")
-                ) \
+                    total_attempts=Count("exercise_id"),
+                )
                 .annotate(
                     success_rate=ExpressionWrapper(
-                        F("correct_attempts") * 100.0 / F("total_attempts"), output_field=FloatField()
+                        F("correct_attempts") * 100.0 / F("total_attempts"),
+                        output_field=FloatField(),
                     )
-                ) \
+                )
                 .order_by("-total_score", "-exercises_completed", "-success_rate")
+            )
 
             enriched_attempts = []
             for attempt in attempts:
                 user_id = attempt["user_id"]
-                attempt["difficulty_success_rates"] = calculate_success_rate_for_difficulties(user_id, exercises)
-                attempt["content_success_rates"] = calculate_success_rate_for_contents(user_id, exercises, subject)
-                attempt["user_details"] = CustomUser.objects.filter(pk=user_id) \
-                    .values("name", "email", "picture") \
+                attempt["difficulty_success_rates"] = (
+                    calculate_success_rate_for_difficulties(user_id, exercises)
+                )
+                attempt["content_success_rates"] = calculate_success_rate_for_contents(
+                    user_id, exercises, subject
+                )
+                attempt["user_details"] = (
+                    CustomUser.objects.filter(pk=user_id)
+                    .values("name", "email", "picture")
                     .first()
+                )
                 enriched_attempts.append(attempt)
 
             return Response(enriched_attempts, status=status.HTTP_200_OK)
         except Subject.DoesNotExist:
-            return Response({"error": "Subject not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Subject not found"}, status=status.HTTP_404_NOT_FOUND
+            )
         except Exception as e:
-            return Response({"error": f"An unexpected error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": f"An unexpected error occurred: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class RankingPerSubjectSectionView(APIView):
@@ -975,47 +994,71 @@ class RankingPerSubjectSectionView(APIView):
     def get(self, request, subject, section):
         try:
             subject_instance = Subject.objects.get(name=subject)
-            contents = subject_instance.contents.split(',')
+            contents = subject_instance.contents.split(",")
             exercises = Exercise.objects.filter(subject=subject)
-            
-            attempts = AttemptExercise.objects.filter(exercise_id__in=exercises).values(
-                'user_id'
-            ).annotate(
-                total_score=Sum('score'),
-                exercises_completed=Count('exercise_id', distinct=True),
-                correct_attempts=Sum(
-                    Case(When(result=True, then=1), default=0, output_field=IntegerField())
-                ),
-                total_attempts=Count('exercise_id')
-            ).annotate(
-                success_rate=ExpressionWrapper(
-                    F('correct_attempts') * 100.0 / F('total_attempts'), 
-                    output_field=FloatField()
+
+            attempts = (
+                AttemptExercise.objects.filter(exercise_id__in=exercises)
+                .values("user_id")
+                .annotate(
+                    total_score=Sum("score"),
+                    exercises_completed=Count("exercise_id", distinct=True),
+                    correct_attempts=Sum(
+                        Case(
+                            When(result=True, then=1),
+                            default=0,
+                            output_field=IntegerField(),
+                        )
+                    ),
+                    total_attempts=Count("exercise_id"),
                 )
-            ).order_by('-total_score', '-exercises_completed', '-success_rate')
+                .annotate(
+                    success_rate=ExpressionWrapper(
+                        F("correct_attempts") * 100.0 / F("total_attempts"),
+                        output_field=FloatField(),
+                    )
+                )
+                .order_by("-total_score", "-exercises_completed", "-success_rate")
+            )
 
             filtered_attempts = []
             for attempt in attempts:
-                user_id = attempt['user_id']
+                user_id = attempt["user_id"]
                 user = CustomUser.objects.get(pk=user_id)
-                user_sections = user.subject_info.get('sections', [])
+                student_or_teacher_instance = (
+                    Student.objects.filter(user_id=user).first()
+                    or Teacher.objects.filter(user_id=user).first()
+                )
+                user_sections = student_or_teacher_instance.subject.get("sections", [])
                 if section in user_sections:
-                    user_details = user.get_user_details()
-                    attempt['user_details'] = user_details
+                    attempt["user_details"] = {
+                        "name": user.name,
+                        "email": user.email,
+                        "picture": user.picture.url if user.picture else None,
+                    }
 
-                    difficulty_success_rates = calculate_success_rate_for_difficulties(user_id, exercises)
-                    content_success_rates = calculate_success_rate_for_contents(user_id, exercises, contents)
+                    difficulty_success_rates = calculate_success_rate_for_difficulties(
+                        user_id, exercises
+                    )
+                    content_success_rates = calculate_success_rate_for_contents(
+                        user_id, exercises, contents
+                    )
 
-                    attempt['difficulty_success_rates'] = difficulty_success_rates
-                    attempt['content_success_rates'] = content_success_rates
+                    attempt["difficulty_success_rates"] = difficulty_success_rates
+                    attempt["content_success_rates"] = content_success_rates
 
                     filtered_attempts.append(attempt)
 
             return Response(filtered_attempts, status=status.HTTP_200_OK)
         except Subject.DoesNotExist:
-            return Response({"error": "Subject not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Subject not found"}, status=status.HTTP_404_NOT_FOUND
+            )
         except Exception as e:
-            return Response({"error": f"An unexpected error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": f"An unexpected error occurred: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class ExerciseGeneratorView(APIView):
