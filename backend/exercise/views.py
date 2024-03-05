@@ -1025,11 +1025,7 @@ class RankingPerSubjectSectionView(APIView):
             for attempt in attempts:
                 user_id = attempt["user_id"]
                 user = CustomUser.objects.get(pk=user_id)
-                student_or_teacher_instance = (
-                    Student.objects.filter(user_id=user).first()
-                    or Teacher.objects.filter(user_id=user).first()
-                )
-                user_sections = student_or_teacher_instance.subject.get("sections", [])
+                user_sections = user.subject.get("sections", [])
                 if section in user_sections:
                     attempt["user_details"] = {
                         "name": user.name,

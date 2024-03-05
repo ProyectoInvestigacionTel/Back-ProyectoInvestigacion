@@ -78,6 +78,8 @@ class CustomUser(AbstractBaseUser):
     )
     campus = models.CharField(max_length=100, null=True)
     picture = models.ImageField(upload_to="user_photos/", null=True, blank=True)
+    subject = models.JSONField(null=True, blank=True)
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["name", "user_id"]
 
@@ -102,11 +104,9 @@ class CustomUser(AbstractBaseUser):
 # Modelo de Teacher,TeacherAssistant y Coordinator
 class Teacher(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, db_column="user_id")
-    subject = models.JSONField()
 
 
 # Modelo de Student
 class Student(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, db_column="user_id")
-    subject = models.JSONField()
     semester = models.CharField(max_length=10)

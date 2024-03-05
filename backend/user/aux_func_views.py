@@ -29,7 +29,11 @@ def authenticate_or_create_user(data):
     email = data.get("ext_user_username")
     name = data.get("lis_person_name_full")
     roles = data.get("roles")
+    sections = [
+        section.strip() for section in context_title.split("Paralelos:")[1].split(",")
+    ]
 
+    subject_info = {"subject": subject, "sections": sections}
     institution, _ = Institution.objects.get_or_create(
         name="Universidad Técnica Federico Santa María"
     )
@@ -40,29 +44,18 @@ def authenticate_or_create_user(data):
             "name": name,
             "password": generate_random_password(),
             "institution": institution,
+            "subject": subject_info,
         },
     )
 
     context_label = data.get("context_label")
     subject = context_label.split("_")[3]
     context_title = data.get("context_title")
-    sections = [
-        section.strip() for section in context_title.split("Paralelos:")[1].split(",")
-    ]
 
-    subject_info = {"subject": subject, "sections": sections}
     print("roles", roles, flush=True)
     if "Instructor" in roles:
-        Teacher.objects.update_or_create(
-            user=user,
-            defaults={"subject": subject_info},
-        )
         user.roles.add(Rol.objects.get(name=Rol.Teacher))
     elif "Learner" in roles:
-        Student.objects.update_or_create(
-            user=user,
-            defaults={"subject": subject_info},
-        )
         user.roles.add(Rol.objects.get(name=Rol.Student))
 
     user.save()
