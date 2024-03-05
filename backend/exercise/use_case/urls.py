@@ -14,6 +14,11 @@ urlpatterns = [
         name="use-case-delete",
     ),
     path(
+        "<int:exercise_id>/<int:use_case_id>/",
+        UseCasePutView.as_view(),
+        name="use-case-put",
+    ),
+    path(
         "<int:exercise_id>",
         UseCasesCreateView.as_view(),
         name="use-case-bulk-create",

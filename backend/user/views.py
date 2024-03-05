@@ -120,9 +120,9 @@ class UserView(APIView):
             or usuario.roles.filter(name="TeacherAssistant").exists()
             or usuario.roles.filter(name="Coordinator").exists()
         ):
-            serializer = TeacherGETSerializer(usuario.Teacher)
+            serializer = TeacherGETSerializer(usuario)
         elif usuario.roles.filter(name="Student").exists():
-            serializer = StudentGETSerializer(usuario.Student)
+            serializer = StudentGETSerializer(usuario)
         elif usuario.roles.filter(name="ADMIN").exists():
             serializer = CustomUserGETSerializer(usuario)
         else:
@@ -182,6 +182,8 @@ class LoginUser(APIView):
                 user_serializer.institution.name if user_serializer.institution else ""
             ),
             "campus": user_serializer.campus if user_serializer.campus else "",
+            "section": user_serializer.section if user_serializer.section else "",
+            "picture": user_serializer.picture.url if user_serializer.picture else "",
         }
 
         if user_serializer.roles.filter(name="Student").exists():

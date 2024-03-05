@@ -102,6 +102,33 @@ class UseCasesCreateView(APIView):
         return Response(created_data, status=status.HTTP_201_CREATED)
 
 
+class UseCasePutView(APIView):
+    if settings.DEVELOPMENT_MODE:
+        authentication_classes = []
+        permission_classes = []
+    else:
+        authentication_classes = [JWTAuthentication]
+        permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(request_body=UseCaseSerializer)
+    def put(self, request, exercise_id, use_case_id):
+        try:
+            use_case = UseCase.objects.get(use_case_id=use_case_id, exercise_id=exercise_id)
+            serializer = UseCaseSerializer(use_case, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except UseCase.DoesNotExist:
+            return Response(
+                {"error": "Caso de uso no encontrado"}, status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
 class UseCaseUploadView(APIView):
     parser_classes = [MultiPartParser]
     if settings.DEVELOPMENT_MODE:

@@ -78,5 +78,7 @@ urlpatterns = [
         ExerciseGeneratorView.as_view(),
         name="exercise-generator",
     ),
+    path("feedback/<int:feedback_id>",FeedbackInfoView.as_view(), name="feedback-info"),
     path("use_cases/", include("exercise.use_case.urls")),
+    
 ]

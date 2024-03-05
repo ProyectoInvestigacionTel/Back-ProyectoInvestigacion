@@ -243,3 +243,5 @@ class ExerciseRankingSerializer(serializers.Serializer):
     title = serializers.CharField()
     total_attempts = serializers.IntegerField()
     completion_rate = serializers.FloatField()
+
+

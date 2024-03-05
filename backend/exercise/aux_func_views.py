@@ -115,7 +115,8 @@ def update_attempt(current_attempt, request, exercise_instance, user, score, res
 
     if current_attempt:
         current_attempt.attempts += 1
-        current_attempt.score = score
+        if current_attempt.score != exercise_instance.score:
+            current_attempt.score = score
         current_attempt.time = request.data["time"]
         current_attempt.result = result
         current_attempt.save()
@@ -161,33 +162,39 @@ def create_or_update_attempt_detal(current_attemp, score, result):
 
 
 def create_or_update_feedback(
-    attemp_instance, initial_feedback, code, exercise_id, result_file
+    attemp_instance, initial_feedback, code, exercise_id, result_file, gpt
 ):
     from exercise.serializers import FeedbackDetailSerializer
 
-    retro_inicial = [
-        {
-            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "sender": "CHATGPT",
-            "message": initial_feedback,
-        }
-    ]
+    if gpt:
+        retro_inicial = [
+            {
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "sender": "CHATGPT",
+                "message": initial_feedback,
+            }
+        ]
+
     retro_serializer = FeedbackDetailSerializer(
         data={"attempt_id": attemp_instance.attempt_id}
     )
     if retro_serializer.is_valid():
         retro_instance = retro_serializer.save()
         code_file_name = f"code_Re{retro_instance.feedback_id}_Ej{exercise_id}.txt"
-        conversation_file_name = (
-            f"conversation_Re{retro_instance.feedback_id}_Ej{exercise_id}.json"
-        )
         result_file_name = f"result_Re{retro_instance.feedback_id}_Ej{exercise_id}.json"
 
         retro_instance.code_file.save(code_file_name, ContentFile(code))
-        retro_instance.conversation_file.save(
-            conversation_file_name, ContentFile(json.dumps(retro_inicial))
-        )
-        retro_instance.result_file.save(result_file_name, ContentFile(result_file))
+
+        if gpt:
+            conversation_file_name = (
+                f"conversation_Re{retro_instance.feedback_id}_Ej{exercise_id}.json"
+            )
+            retro_instance.conversation_file.save(
+                conversation_file_name, ContentFile(json.dumps(retro_inicial))
+            )
+
+        json_result_file = json.dumps(result_file)
+        retro_instance.result_file.save(result_file_name, ContentFile(json_result_file))
 
         retro_instance.save()
         return retro_instance

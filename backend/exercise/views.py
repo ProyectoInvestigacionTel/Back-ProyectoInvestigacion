@@ -376,6 +376,7 @@ class AttemptExerciseCreateGPTView(APIView):
             code,
             data["exercise_id"],
             results_json,
+            True,
         )
         if retro_instance is None:
             return Response(
@@ -564,6 +565,7 @@ class ExercisesPerSubjectView(APIView):
                             "user_id": user.user_id,
                             "email": user.email,
                             "name": user.name,
+                            "picture": user.picture.url if user.picture else "",
                         }
                     )
                 )
@@ -621,56 +623,102 @@ class DetailPerExercise(APIView):
 
     def get(self, request, exercise_id, user_id):
         try:
-            user = CustomUser.objects.get(pk=user_id)
+            CustomUser.objects.get(pk=user_id)
+
             attempts = AttemptExercise.objects.filter(
                 exercise_id=exercise_id, user_id=user_id
             )
 
-            for attempt in attempts:
-                detail_attempts = AttemptDetail.objects.filter(
-                    general_attempt_id=attempt.general_attempt_id
-                )
+            response_data = []
 
-                lista = []
-                for retro in detail_attempts:
-                    feedback_details = FeedbackDetail.objects.filter(
-                        attempt_id=retro.attempt_id
-                    )
-                    if feedback_details.exists():
-                        feedback_detail = feedback_details[0]
+            for attempt in attempts:
+                attempt_data = {
+                    "general_attempt_id": attempt.general_attempt_id,
+                    "score": attempt.score,
+                    "result": attempt.result,
+                    "details": [],
+                }
+
+                detail_attempts = AttemptDetail.objects.filter(
+                    general_attempt_id=attempt
+                )
+                for detail in detail_attempts:
+                    detail_data = {
+                        "attempt_id": detail.attempt_id,
+                        "date": detail.date,
+                        "score": detail.score,
+                        "result": detail.result,
+                        "feedback": detail.feedback,
+                    }
+
+                    feedback_details = FeedbackDetail.objects.filter(attempt_id=detail)
+                    feedback_info = []
+                    for feedback in feedback_details:
+                        code_content = None
                         results_content = None
 
-                        if (
-                            hasattr(feedback_detail, "result_file")
-                            and feedback_detail.result_file
-                        ):
-                            with default_storage.open(
-                                feedback_detail.result_file.path, "r"
-                            ) as file:
-                                results_content = json.load(file)
-                        lista.append(
-                            format_response_data(
-                                {
-                                    "feedback_id": feedback_detail.feedback_id,
-                                    "results": results_content,
-                                }
+                        if feedback.code_file:
+                            code_content = (
+                                default_storage.open(feedback.code_file.name)
+                                .read()
+                                .decode("utf-8")
                             )
-                        )
+                        if feedback.result_file:
+                            results_content = json.loads(
+                                default_storage.open(feedback.result_file.name)
+                                .read()
+                                .decode("utf-8")
+                            )
 
-            return Response(lista, status=status.HTTP_200_OK)
+                        feedback_info = {
+                            "feedback_id": feedback.feedback_id,
+                            "code": code_content,
+                            "results": results_content,
+                        }
+                    detail_data["feedback_details"] = feedback_info
+
+                    attempt_data["details"].append(detail_data)
+
+                response_data.append(attempt_data)
+
+            return Response(response_data, status=200)
         except CustomUser.DoesNotExist:
-            return Response(
-                {"error": "user no encontrado"}, status=status.HTTP_404_NOT_FOUND
-            )
-        except AttemptExercise.DoesNotExist:
-            return Response(
-                {"error": "attempt de Exercise no encontrado"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return Response({"error": "User not found"}, status=404)
         except Exception as e:
             return Response(
-                {"error": "Ocurrió un error inesperado"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"error": f"An unexpected error occurred: {str(e)}"}, status=500
+            )
+
+
+class FeedbackInfoView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, feedback_id):
+        try:
+            feedback = FeedbackDetail.objects.get(pk=feedback_id)
+            serializer_data = FeedbackDetailSerializer(feedback).data
+            if feedback.code_file:
+                with feedback.code_file.open("r") as file:
+                    serializer_data["code"] = file.read()
+            if feedback.conversation_file:
+                with feedback.conversation_file.open("r") as file:
+                    serializer_data["conversation"] = json.load(file)
+            if feedback.result_file:
+
+                with feedback.result_file.open("r") as file:
+                    serializer_data["results"] = file.read()
+                    serializer_data["results"] = json.loads(serializer_data["results"])
+
+            serializer_data.pop("conversation_file")
+            serializer_data.pop("result_file")
+            serializer_data.pop("code_file")
+            return Response(serializer_data, status=200)
+        except FeedbackDetail.DoesNotExist:
+            return Response({"error": "FeedbackDetail not found."}, status=404)
+        except Exception as e:
+            return Response(
+                {"error": f"An unexpected error occurred: {str(e)}"}, status=500
             )
 
 
@@ -738,13 +786,6 @@ class SubjectInfoView(APIView):
                     ranking=Window(expression=Rank(), order_by=F("total_score").desc())
                 )
             )
-            user = CustomUser.objects.get(user_id=ranking[0]["user_id"])
-            data["user_id"] = user.user_id
-            data["email"] = user.email
-            data["name"] = user.name
-            data["total_score"] = ranking[0]["total_score"]
-            data["ranking"] = ranking[0]["ranking"]
-            data["picture"] = user.picture.url if user.picture else None
             return Response(format_response_data(data), status=status.HTTP_200_OK)
         except Exercise.DoesNotExist:
             return Response(
@@ -855,6 +896,22 @@ class AttemptExerciseCreateView(APIView):
                 {"error": "Error al crear o actualizar el detail del attempt"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        retro_instance = create_or_update_feedback(
+            detail_instance,
+            "No hay retroalimentación",
+            code,
+            data["exercise_id"],
+            results_json,
+            False,
+        )
+        if retro_instance is None:
+            return Response(
+                {"error": "Error al crear o actualizar la retroalimentación"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        update_result_state_and_score(detail_instance, user, score)
         return Response(
             {
                 "message": "attempt registrado con éxito",
@@ -912,6 +969,64 @@ class RankingPerSubjectView(APIView):
             ]
 
             return Response(enriched_attempts, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {"error": "An unexpected error occurred: " + str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class RankingPerSubjectSectionView(APIView):
+    if settings.DEVELOPMENT_MODE:
+        authentication_classes = []
+        permission_classes = []
+    else:
+        authentication_classes = [JWTAuthentication]
+        permission_classes = [IsAuthenticated]
+
+    def get(self, request, subject, section):
+        try:
+            exercises = Exercise.objects.filter(subject=subject)
+            attempts = (
+                AttemptExercise.objects.filter(exercise_id__in=exercises)
+                .values("user_id")
+                .annotate(
+                    total_score=Sum("score"),
+                    exercises_completed=Count("exercise_id", distinct=True),
+                    correct_attempts=Sum(
+                        Case(
+                            When(result=True, then=1),
+                            default=0,
+                            output_field=IntegerField(),
+                        )
+                    ),
+                    total_attempts=Count("exercise_id"),
+                )
+                .annotate(
+                    success_rate=ExpressionWrapper(
+                        F("correct_attempts") * 100.0 / F("total_attempts"),
+                        output_field=FloatField(),
+                    )
+                )
+                .order_by("-total_score", "-exercises_completed", "-success_rate")
+            )
+
+            filtered_attempts = []
+            for attempt in attempts:
+                user_id = attempt["user_id"]
+                student_exists_in_section = Student.objects.filter(
+                    user_id=user_id, section=section
+                ).exists()
+                if student_exists_in_section:
+                    user_details = (
+                        CustomUser.objects.filter(pk=user_id)
+                        .values("name", "email", "picture")
+                        .first()
+                    )
+                    attempt["user_details"] = user_details
+                    filtered_attempts.append(attempt)
+
+            return Response(filtered_attempts, status=status.HTTP_200_OK)
         except Exception as e:
             return Response(
                 {"error": "An unexpected error occurred: " + str(e)},
