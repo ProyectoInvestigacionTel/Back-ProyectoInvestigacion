@@ -38,6 +38,11 @@ urlpatterns = [
         name="Eanking-Exercise",
     ),
     path(
+        "ranking/<str:subject>/<str:section>",
+        RankingPerSubjectSectionView.as_view(),
+        name="ranking-subject-section",
+    ),
+    path(
         "exercises-per-subject/<str:subject>",
         ExercisesPerSubjectView.as_view(),
         name="Exercises-per-subject",
