@@ -1024,8 +1024,11 @@ class RankingPerSubjectSectionView(APIView):
             filtered_attempts = []
             for attempt in attempts:
                 user_id = attempt["user_id"]
+                print(user_id,flush=True)
                 user = CustomUser.objects.get(pk=user_id)
+                print(user.__dict__,flush=True)
                 user_sections = user.subject.get("sections", [])
+                print("sectos",user_sections,flush=True)
                 if section in user_sections:
                     attempt["user_details"] = {
                         "name": user.name,
@@ -1037,7 +1040,7 @@ class RankingPerSubjectSectionView(APIView):
                         user_id, exercises
                     )
                     content_success_rates = calculate_success_rate_for_contents(
-                        user_id, exercises, contents
+                        user_id, exercises, subject
                     )
 
                     attempt["difficulty_success_rates"] = difficulty_success_rates

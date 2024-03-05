@@ -189,15 +189,12 @@ class LoginUser(APIView):
             ),
             "campus": user_serializer.campus if user_serializer.campus else "",
             "picture": user_serializer.picture.url if user_serializer.picture else "",
+            "subject":user_serializer.subject
         }
 
         if user_serializer.roles.filter(name="Student").exists():
             student = Student.objects.get(user=user_serializer)
             user_data["semester"] = student.semester
-            user_data["subject"] = student.subject
-        elif user_serializer.roles.filter(name="Teacher").exists():
-            teacher = Teacher.objects.get(user=user_serializer)
-            user_data["subject"] = teacher.subject
 
         access_token_payload["user_data"] = user_data
         access_token = jwt.encode(access_token_payload, SECRET_KEY, algorithm="HS256")
@@ -248,14 +245,13 @@ class LoginUserToken(APIView):
             "roles": [rol.name for rol in user_serializer.roles.all()],
             "institution": user_serializer.institution.name,
             "campus": user_serializer.campus,
+            "subject":user_serializer.subject
         }
         if Student.objects.filter(user=user_serializer).exists():
             student = Student.objects.get(user=user_serializer)
-            user_data["subject_name"] = student.subject
             user_data["semester"] = student.semester
         elif Teacher.objects.filter(user=user_serializer).exists():
             teacher = Teacher.objects.get(user=user_serializer)
-            user_data["subject"] = teacher.subject
         response_data = {**user_data, **token_data}
         return Response(response_data, status=status.HTTP_200_OK)
 
