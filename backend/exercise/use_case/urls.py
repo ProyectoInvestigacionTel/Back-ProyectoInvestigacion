@@ -14,16 +14,16 @@ urlpatterns = [
         name="use-case-delete",
     ),
     path(
-        "<int:exercise_id>/<int:use_case_id>/",
-        UseCasePutView.as_view(),
-        name="use-case-put",
-    ),
-    path(
         "<int:exercise_id>",
         UseCasesCreateView.as_view(),
         name="use-case-bulk-create",
     ),
     path(
         "upload_zip/<int:exercise_id>", UseCaseUploadView.as_view(), name="upload-file"
+    ),
+    path(
+        "<int:exercise_id>/<int:use_case_id>",
+        UseCasePutView.as_view(),
+        name="use-case-put",
     ),
 ]

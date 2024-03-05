@@ -14,7 +14,7 @@ urlpatterns = [
         name="Exercise-list-subject",
     ),
     path(
-        "detail/<int:exercise_id>",
+        "delete/<int:exercise_id>",
         ExerciseDeleteView.as_view(),
         name="exercise-detelete",
     ),
