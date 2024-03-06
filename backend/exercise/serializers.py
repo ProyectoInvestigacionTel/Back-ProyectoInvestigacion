@@ -149,8 +149,6 @@ class ExerciseListSerializerAll(serializers.ModelSerializer):
         exclude = [
             "problem_statement",
             "example",
-            "user_attempts_info",
-            "success_rate",
         ]
 
     def get_files_data(self, obj):
