@@ -279,10 +279,20 @@ class ExerciseListSubjectView(APIView):
 
     def get(self, request, subject):
         try:
+            user = request.user
+            subject = user.subject.get("subject", None) if user.subject else None
+
+            if not subject:
+                return Response(
+                    {"error": "Subject no encontrado para el usuario."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
             Exercises = Exercise.objects.filter(subject=subject)
             paginator = PageNumberPagination()
             paginated_Exercises = paginator.paginate_queryset(Exercises, request)
-            serializer = ExerciseListSerializerAll(paginated_Exercises, many=True)
+            serializer = ExerciseListSerializerAll(
+                paginated_Exercises, many=True, context={"request": request}
+            )
 
             return paginator.get_paginated_response(serializer.data)
         except CustomUser.DoesNotExist:
