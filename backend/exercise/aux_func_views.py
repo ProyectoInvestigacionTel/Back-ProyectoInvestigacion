@@ -13,7 +13,7 @@ from subject.models import Subject
 
 def calculate_success_rate_for_difficulties(user_id, exercises):
     difficulty_success_rates = {}
-    for difficulty in ['Facil', 'Medio', 'Dificil']:
+    for difficulty in ['Fácil', 'Medio', 'Dificil']:
         difficulty_exercises = exercises.filter(difficulty=difficulty)
         difficulty_success_rates[difficulty] = calculate_success_rate(
             difficulty_exercises, user_id
