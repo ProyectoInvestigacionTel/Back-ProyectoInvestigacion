@@ -20,22 +20,7 @@ from drf_yasg import openapi
 from django.conf import settings
 from .aux_func_views import *
 from django.db.models.functions import Rank
-from django.db.models import (
-    Count,
-    Sum,
-    Max,
-    Q,
-    Window,
-    F,
-    Count,
-    Sum,
-    F,
-    FloatField,
-    ExpressionWrapper,
-    Case,
-    When,
-    IntegerField,
-)
+from django.db.models import Count, Sum, Max, Q, Window, F, Count, Sum, F, Avg, Min, Max
 from django.utils import timezone
 from rest_framework.pagination import PageNumberPagination
 import requests
@@ -169,6 +154,7 @@ class ExerciseCreateView(APIView):
 
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            print("error: ", e)
             return Response(
                 {"error": "Ocurrió un error inesperado: " + str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -250,19 +236,25 @@ class ExerciseUpdateViewTeacher(APIView):
 
 
 class ExerciseListView(APIView):
-    if settings.DEVELOPMENT_MODE:
-        authentication_classes = []
-        permission_classes = []
-    else:
-        authentication_classes = [JWTAuthentication]
-        permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         try:
-            Exercises = Exercise.objects.all()
+            user = request.user
+            subject = user.subject.get("subject", None) if user.subject else None
+
+            if not subject:
+                return Response(
+                    {"error": "Subject no encontrado para el usuario."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            Exercises = Exercise.objects.filter(subject=subject)
             paginator = PageNumberPagination()
             paginated_Exercises = paginator.paginate_queryset(Exercises, request)
-            serializer = ExerciseListSerializerAll(paginated_Exercises, many=True)
+            serializer = ExerciseListSerializerAll(
+                paginated_Exercises, many=True, context={"request": request}
+            )
 
             return paginator.get_paginated_response(serializer.data)
         except CustomUser.DoesNotExist:
@@ -403,64 +395,44 @@ class InfoExercisesPerUserView(APIView):
         permission_classes = [IsAuthenticated]
 
     def get(self, request, user_id):
+        user = CustomUser.objects.get(pk=user_id)
+
+        attempts_exercises = AttemptExercise.objects.filter(user_id=user_id)
         data = []
 
-        try:
-            CustomUser.objects.get(pk=user_id)
-        except CustomUser.DoesNotExist:
-            return Response(
-                {"error": "Usuario no encontrado."}, status=status.HTTP_404_NOT_FOUND
-            )
-        exercises = Exercise.objects.filter(user_id=user_id)
+        for attempt_exercise in attempts_exercises:
+            exercise = attempt_exercise.exercise_id
+            attempt_details = AttemptDetail.objects.filter(
+                general_attempt_id=attempt_exercise
+            ).order_by("date")
 
-        for exercise in exercises:
-            max_score = AttemptDetail.objects.filter(
-                general_attempt_id__exercise_id=exercise
-            ).aggregate(Max("score"))["score__max"]
-            exercise_data = {
+            attempt_data = {
                 "exercise_id": exercise.exercise_id,
                 "title": exercise.title,
-                "creation_date": exercise.date,
                 "difficulty": exercise.difficulty,
-                "contents": exercise.contents,
                 "programming_language": exercise.programming_language,
                 "subject": exercise.subject,
-                "max_score": exercise.score,
-                "obtained_score": max_score if max_score else "No resuelto",
-                "attempts": {},
+                "attempts_details": [],
+                "max_score": attempt_details.aggregate(Max("score"))["score__max"],
+                "min_score": attempt_details.aggregate(Min("score"))["score__min"],
+                "avg_score": attempt_details.aggregate(Avg("score"))["score__avg"],
             }
 
-            general_attempts = AttemptExercise.objects.filter(
-                user_id=user_id, exercise_id=exercise.exercise_id
-            ).distinct("exercise_id")
-            for general_attempt in general_attempts:
-                attempt_detail = AttemptDetail.objects.filter(
-                    general_attempt_id=general_attempt
+            for detail in attempt_details:
+                feedback_ids = FeedbackDetail.objects.filter(
+                    attempt_id=detail
+                ).values_list("feedback_id", flat=True)
+                attempt_data["attempts_details"].append(
+                    {
+                        "attempt_id": detail.attempt_id,
+                        "date": detail.date,
+                        "score": detail.score,
+                        "result": detail.result,
+                        "feedback_ids": list(feedback_ids),
+                    }
                 )
 
-                for index, attempt_detail in enumerate(attempt_detail, start=1):
-                    # Obtener details de retroalimentación
-                    feedback_detail = FeedbackDetail.objects.filter(
-                        attempt_id=attempt_detail
-                    ).first()
-
-                    # Leer el código y la conversación desde los archivos si están presentes
-                    exercise_data["attempts"][f"attempt_{index}"] = {
-                        "score": attempt_detail.score,
-                        "date": attempt_detail.date.strftime("%Y-%m-%d %H:%M:%S"),
-                    }
-                    if feedback_detail:
-                        if feedback_detail.code_file and feedback_detail.code_file:
-                            with feedback_detail.code_file.open("r") as file:
-                                code = file.read()
-                            with feedback_detail.conversation_file.open("r") as file:
-                                conversation = json.load(file)
-                            exercise_data["attempts"][f"attempt_{index}"] = {
-                                "code": code,
-                                "conversation": conversation,
-                            }
-
-            data.append(format_response_data(exercise_data))
+            data.append(attempt_data)
 
         return Response(data, status=status.HTTP_200_OK)
 
@@ -931,45 +903,86 @@ class RankingPerSubjectView(APIView):
     def get(self, request, subject):
         try:
             exercises = Exercise.objects.filter(subject=subject)
-            attempts = (
-                AttemptExercise.objects.filter(exercise_id__in=exercises)
-                .values("user_id")
-                .annotate(
-                    total_score=Sum("score"),
-                    exercises_completed=Count("exercise_id", distinct=True),
-                    correct_attempts=Sum(
-                        Case(
-                            When(result=True, then=1),
-                            default=0,
-                            output_field=IntegerField(),
-                        )
-                    ),
-                    total_attempts=Count("exercise_id"),
-                )
-                .annotate(
-                    success_rate=ExpressionWrapper(
-                        F("correct_attempts") * 100.0 / F("total_attempts"),
-                        output_field=FloatField(),
-                    )
-                )
-                .order_by("-total_score", "-exercises_completed", "-success_rate")
-            )
+            users = CustomUser.objects.filter(
+                attemptexercise__exercise_id__in=exercises
+            ).distinct()
 
             enriched_attempts = []
-            for attempt in attempts:
-                user_id = attempt["user_id"]
-                attempt["difficulty_success_rates"] = (
-                    calculate_success_rate_for_difficulties(user_id, exercises)
+            for user in users:
+                user_id = user.pk
+                difficulty_success_rates = calculate_success_rate_for_difficulties(
+                    user_id, exercises
                 )
-                attempt["content_success_rates"] = calculate_success_rate_for_contents(
+                content_success_rates = calculate_success_rate_for_contents(
                     user_id, exercises, subject
                 )
-                attempt["user_details"] = (
-                    CustomUser.objects.filter(pk=user_id)
-                    .values("name", "email", "picture")
-                    .first()
+                user_attempts = AttemptExercise.objects.filter(
+                    user_id=user_id, exercise_id__in=exercises
                 )
-                enriched_attempts.append(attempt)
+
+                total_score = (
+                    AttemptExercise.objects.filter(
+                        user_id=user_id, exercise_id__in=exercises
+                    ).aggregate(Sum("score"))["score__sum"]
+                    or 0
+                )
+                total_attempts = (
+                    AttemptExercise.objects.filter(
+                        user_id=user_id, exercise_id__in=exercises
+                    ).aggregate(total=Sum("attempts"))["total"]
+                    or 0
+                )
+                correct_attempts = AttemptDetail.objects.filter(
+                    general_attempt_id__in=AttemptExercise.objects.filter(
+                        user_id=user_id, exercise_id__in=exercises
+                    ),
+                    result=True,
+                ).count()
+                exercises_completed = AttemptExercise.objects.filter(
+                    user_id=user_id, exercise_id__in=exercises, result=True
+                ).count()
+                success_rate = (
+                    (correct_attempts / total_attempts * 100.0) if total_attempts else 0
+                )
+                average_score = (
+                    AttemptDetail.objects.filter(
+                        general_attempt_id__in=user_attempts
+                    ).aggregate(Avg("score"))["score__avg"]
+                    or 0
+                )
+                min_score = (
+                    AttemptDetail.objects.filter(
+                        general_attempt_id__in=user_attempts
+                    ).aggregate(Min("score"))["score__min"]
+                    or 0
+                )
+                max_score = (
+                    AttemptDetail.objects.filter(
+                        general_attempt_id__in=user_attempts
+                    ).aggregate(Max("score"))["score__max"]
+                    or 0
+                )
+
+                enriched_attempts.append(
+                    {
+                        "user_id": user_id,
+                        "total_score": total_score,
+                        "exercises_completed": exercises_completed,
+                        "correct_attempts": correct_attempts,
+                        "total_attempts": total_attempts,
+                        "success_rate": success_rate,
+                        "average_score": average_score,
+                        "min_score": min_score,
+                        "max_score": max_score,
+                        "difficulty_success_rates": difficulty_success_rates,
+                        "content_success_rates": content_success_rates,
+                        "user_details": {
+                            "name": user.name,
+                            "email": user.email,
+                            "picture": user.picture.url if user.picture else None,
+                        },
+                    }
+                )
 
             return Response(enriched_attempts, status=status.HTTP_200_OK)
         except Subject.DoesNotExist:
@@ -994,64 +1007,81 @@ class RankingPerSubjectSectionView(APIView):
     def get(self, request, subject, section):
         try:
             subject_instance = Subject.objects.get(name=subject)
-            contents = subject_instance.contents.split(",")
             exercises = Exercise.objects.filter(subject=subject)
 
-            attempts = (
-                AttemptExercise.objects.filter(exercise_id__in=exercises)
-                .values("user_id")
-                .annotate(
-                    total_score=Sum("score"),
-                    exercises_completed=Count("exercise_id", distinct=True),
-                    correct_attempts=Sum(
-                        Case(
-                            When(result=True, then=1),
-                            default=0,
-                            output_field=IntegerField(),
-                        )
-                    ),
-                    total_attempts=Count("exercise_id"),
-                )
-                .annotate(
-                    success_rate=ExpressionWrapper(
-                        F("correct_attempts") * 100.0 / F("total_attempts"),
-                        output_field=FloatField(),
-                    )
-                )
-                .order_by("-total_score", "-exercises_completed", "-success_rate")
+            students_in_section = CustomUser.objects.filter(
+                subject__sections__contains=[section], subject__has_key="subject"
+            ).values_list("user_id", flat=True)
+
+            print(students_in_section, flush=True)
+            attempts_queryset = AttemptExercise.objects.filter(
+                exercise_id__in=exercises, user_id__in=students_in_section
             )
 
-            filtered_attempts = []
-            for attempt in attempts:
-                user_id = attempt["user_id"]
-                print(user_id,flush=True)
+            enriched_attempts = []
+
+            for user_id in students_in_section:
+                user_attempts = attempts_queryset.filter(user_id=user_id)
+                total_score = user_attempts.aggregate(Sum("score"))["score__sum"] or 0
+                total_attempts = user_attempts.count()
+                correct_attempts = AttemptDetail.objects.filter(
+                    general_attempt_id__in=user_attempts, result=True
+                ).count()
+                exercises_completed = user_attempts.filter(result=True).count()
+                success_rate = (
+                    (correct_attempts / total_attempts * 100.0) if total_attempts else 0
+                )
+
+                average_score = (
+                    AttemptDetail.objects.filter(
+                        general_attempt_id__in=user_attempts
+                    ).aggregate(Avg("score"))["score__avg"]
+                    or 0
+                )
+                min_score = (
+                    AttemptDetail.objects.filter(
+                        general_attempt_id__in=user_attempts
+                    ).aggregate(Min("score"))["score__min"]
+                    or 0
+                )
+                max_score = (
+                    AttemptDetail.objects.filter(
+                        general_attempt_id__in=user_attempts
+                    ).aggregate(Max("score"))["score__max"]
+                    or 0
+                )
+
                 user = CustomUser.objects.get(pk=user_id)
-                print(user.__dict__,flush=True)
-                user_sections = user.subject.get("sections", [])
-                print("sectos",user_sections,flush=True)
-                if section in user_sections:
-                    attempt["user_details"] = {
-                        "name": user.name,
-                        "email": user.email,
-                        "picture": user.picture.url if user.picture else None,
+                enriched_attempts.append(
+                    {
+                        "user_id": user_id,
+                        "total_score": total_score,
+                        "exercises_completed": exercises_completed,
+                        "correct_attempts": correct_attempts,
+                        "total_attempts": total_attempts,
+                        "success_rate": success_rate,
+                        "average_score": average_score,
+                        "min_score": min_score,
+                        "max_score": max_score,
+                        "user_details": {
+                            "name": user.name,
+                            "email": user.email,
+                            "picture": user.picture.url if user.picture else None,
+                        },
+                        "difficulty_success_rates": calculate_success_rate_for_difficulties(
+                            user_id, exercises
+                        ),
+                        "content_success_rates": calculate_success_rate_for_contents(
+                            user_id, exercises, subject
+                        ),
                     }
+                )
 
-                    difficulty_success_rates = calculate_success_rate_for_difficulties(
-                        user_id, exercises
-                    )
-                    content_success_rates = calculate_success_rate_for_contents(
-                        user_id, exercises, subject
-                    )
-
-                    attempt["difficulty_success_rates"] = difficulty_success_rates
-                    attempt["content_success_rates"] = content_success_rates
-
-                    filtered_attempts.append(attempt)
-
-            return Response(filtered_attempts, status=status.HTTP_200_OK)
-        except Subject.DoesNotExist:
+            return Response(enriched_attempts, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
             return Response(
-                {"error": "Subject not found"}, status=status.HTTP_404_NOT_FOUND
+                {"error": "Subject or Section not found"},
+                status=status.HTTP_404_NOT_FOUND,
             )
         except Exception as e:
             return Response(
@@ -1071,3 +1101,44 @@ class ExerciseGeneratorView(APIView):
             headers={"Content-Type": "application/json"},
         )
         return Response({"message": response}, status=status.HTTP_200_OK)
+
+
+class CodeExecutionView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(request_body=CodeExecutionSerializer)
+    @transaction.atomic
+    def post(self, request, *args, **kwargs):
+        serializer = CodeExecutionSerializer(data=request.data)
+        if serializer.is_valid():
+            code = serializer.validated_data["code"]
+            exercise_instance = serializer.validated_data["exercise_id"]
+
+            if verify_imports(code):
+                return Response(
+                    {"error": "Librerías importadas detectadas"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            casos_de_uso = load_use_case(exercise_instance.id)
+            result = execute_code(
+                code, exercise_instance.head, exercise_instance.tail, casos_de_uso
+            )
+
+            if "Error" in result:
+                return Response({"error": result}, status=status.HTTP_400_BAD_REQUEST)
+
+            outputs_esperados = [str(caso["output"]).strip() for caso in casos_de_uso]
+            result_limpio = [linea.strip() for linea in result.splitlines()]
+            results_json = generate_result_json(outputs_esperados, result_limpio)
+
+            return Response(
+                {
+                    "message": "Código ejecutado con éxito",
+                    "result": results_json,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

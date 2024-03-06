@@ -14,7 +14,7 @@ class CustomUserPOSTSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ("rol_usm", "email", "name", "roles", "password", "institution")
+        fields = ("rol_usm", "email", "name", "roles", "password", "institution","subject","campus",)
 
 
 class CustomUserGETSerializer(serializers.ModelSerializer):
@@ -22,7 +22,7 @@ class CustomUserGETSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ("user_id", "email", "name", "roles", "institution", "picture")
+        fields = ("user_id", "email", "name", "roles", "institution","subject","campus",)
 
     def get_roles(self, obj):
         return ", ".join([rol.name for rol in obj.roles.all()])
@@ -30,38 +30,34 @@ class CustomUserGETSerializer(serializers.ModelSerializer):
 
 class TeacherPOSTSerializer(serializers.ModelSerializer):
     user = CustomUserPOSTSerializer()
-    subject = serializers.JSONField()
 
     class Meta:
         model = Teacher
-        fields = ("user", "subject")
+        fields = ("user",)
 
 
 class TeacherGETSerializer(serializers.ModelSerializer):
     user = CustomUserGETSerializer()
-    subject = serializers.JSONField()
 
     class Meta:
         model = Teacher
-        fields = ("user", "subject")
+        fields = ("user",)
 
 
 class StudentPOSTSerializer(serializers.ModelSerializer):
     user = CustomUserPOSTSerializer()
-    subject = serializers.JSONField()
-
+    
     class Meta:
         model = Student
-        fields = ("user", "subject", "semester")
+        fields = ("user", "semester",)
 
 
 class StudentGETSerializer(serializers.ModelSerializer):
     user = CustomUserGETSerializer()
-    subject = serializers.JSONField()
 
     class Meta:
         model = Student
-        fields = ("user", "subject", "semester")
+        fields = ("user", "semester",)
 
 
 class CustomTokenObtainSerializer(serializers.Serializer):
@@ -72,4 +68,4 @@ class CustomTokenObtainSerializer(serializers.Serializer):
 class CustomUserPhotoSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ["picture"]
+        fields = ("picture",)

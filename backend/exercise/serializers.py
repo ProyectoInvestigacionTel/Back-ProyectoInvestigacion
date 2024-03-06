@@ -112,7 +112,7 @@ class ExerciseSerializerUpdateTeacher(serializers.ModelSerializer):
             save_exercise_file(instance, problem_statement_text, "problem_statement")
         if example_text:
             save_exercise_file(instance, example_text, "example")
-        
+
         if use_cases_data:
             for use_case_data in use_cases_data:
                 UseCase.objects.create(exercise_id=instance, **use_case_data)
@@ -142,13 +142,15 @@ class ExerciseListSerializerAll(serializers.ModelSerializer):
     files_data = serializers.SerializerMethodField()
     use_cases = serializers.SerializerMethodField()
     success_rate = serializers.SerializerMethodField()
+    user_attempts_info = serializers.SerializerMethodField()
 
     class Meta:
         model = Exercise
         exclude = [
             "problem_statement",
             "example",
-            
+            "user_attempts_info",
+            "success_rate",
         ]
 
     def get_files_data(self, obj):
@@ -159,14 +161,38 @@ class ExerciseListSerializerAll(serializers.ModelSerializer):
         return UseCaseSerializer(use_cases, many=True).data
 
     def get_success_rate(self, obj):
-        attempts = AttemptExercise.objects.filter(exercise_id=obj)
-        total_attempts = attempts.count()
-        successful_attempts = attempts.filter(result=True).count()
+
+        attempt_ids = AttemptExercise.objects.filter(exercise_id=obj).values_list(
+            "general_attempt_id", flat=True
+        )
+        details = AttemptDetail.objects.filter(general_attempt_id__in=attempt_ids)
+
+        total_attempts = details.count()
+        successful_attempts = details.filter(score__gte=0).count()
+
         if total_attempts > 0:
             success_rate = (successful_attempts / total_attempts) * 100
-            return success_rate
+            return round(success_rate, 2)
         else:
             return 0
+
+    def get_user_attempts_info(self, obj):
+        user = self.context.get("request").user
+        print("sdasdasdsadasda", user, flush=True)
+        attempt_details = AttemptDetail.objects.filter(
+            general_attempt_id__in=AttemptExercise.objects.filter(
+                user_id=user, exercise_id=obj
+            )
+        )
+        total_attempts = attempt_details.count()
+        successful_attempts = attempt_details.filter(result=True).count()
+        resolved = successful_attempts > 0
+
+        return {
+            "resolved": resolved,
+            "total_attempts": total_attempts,
+            "successful_attempts": successful_attempts,
+        }
 
 
 class AttemptExerciseGPTSerializer(serializers.ModelSerializer):
@@ -206,6 +232,20 @@ class AttemptExerciseSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop("code", None)
         return AttemptExercise.objects.create(**validated_data)
+
+    class Meta:
+        model = AttemptExercise
+        fields = [
+            "exercise_id",
+            "time",
+            "code",
+        ]
+
+
+class CodeExecutionSerializer(serializers.ModelSerializer):
+    exercise_id = serializers.PrimaryKeyRelatedField(queryset=Exercise.objects.all())
+    time = serializers.CharField(default="10:00:00")
+    code = serializers.CharField(default='print("Hello World")', write_only=True)
 
     class Meta:
         model = AttemptExercise

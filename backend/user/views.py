@@ -111,7 +111,7 @@ class PostTeacherView(APIView):
 class UserView(APIView):
     def get(self, request, email, *args, **kwargs):
         try:
-            user= CustomUser.objects.get(email=email)
+            user = CustomUser.objects.get(email=email)
         except CustomUser.DoesNotExist:
             return Response(
                 {"error": "Usuario no encontrado"},
@@ -122,10 +122,8 @@ class UserView(APIView):
             or user.roles.filter(name="TeacherAssistant").exists()
             or user.roles.filter(name="Coordinator").exists()
         ):
-
             teacher_instance = Teacher.objects.get(user=user)
             serializer = TeacherGETSerializer(teacher_instance)
-
         elif user.roles.filter(name="Student").exists():
             student_instance = Student.objects.get(user=user)
             serializer = StudentGETSerializer(student_instance)
@@ -136,7 +134,6 @@ class UserView(APIView):
                 {"error": "Rol de usuario no válido"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -189,7 +186,7 @@ class LoginUser(APIView):
             ),
             "campus": user_serializer.campus if user_serializer.campus else "",
             "picture": user_serializer.picture.url if user_serializer.picture else "",
-            "subject":user_serializer.subject
+            "subject": user_serializer.subject,
         }
 
         if user_serializer.roles.filter(name="Student").exists():
@@ -245,7 +242,7 @@ class LoginUserToken(APIView):
             "roles": [rol.name for rol in user_serializer.roles.all()],
             "institution": user_serializer.institution.name,
             "campus": user_serializer.campus,
-            "subject":user_serializer.subject
+            "subject": user_serializer.subject,
         }
         if Student.objects.filter(user=user_serializer).exists():
             student = Student.objects.get(user=user_serializer)

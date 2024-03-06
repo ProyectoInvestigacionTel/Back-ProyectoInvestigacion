@@ -10,20 +10,23 @@ import os
 from django.core.files.storage import default_storage
 from exercise.use_case.models import UseCase
 from subject.models import Subject
+from django.db.models import Count, Sum
+
 
 def calculate_success_rate_for_difficulties(user_id, exercises):
     difficulty_success_rates = {}
-    for difficulty in ['Fácil', 'Medio', 'Dificil']:
+    for difficulty in ["Fácil", "Medio", "Dificil"]:
         difficulty_exercises = exercises.filter(difficulty=difficulty)
         difficulty_success_rates[difficulty] = calculate_success_rate(
             difficulty_exercises, user_id
         )
     return difficulty_success_rates
 
+
 def calculate_success_rate_for_contents(user_id, exercises, subject_name):
     content_success_rates = {}
     subject_instance = Subject.objects.get(name=subject_name)
-    contents = subject_instance.contents.split(',')
+    contents = subject_instance.contents.split(",")
     for content in contents:
         content_exercises = exercises.filter(contents__icontains=content)
         content_success_rates[content] = calculate_success_rate(
@@ -31,17 +34,23 @@ def calculate_success_rate_for_contents(user_id, exercises, subject_name):
         )
     return content_success_rates
 
+
 def calculate_success_rate(exercises, user_id):
-    correct_attempts = AttemptExercise.objects.filter(
-        exercise_id__in=exercises,
-        user_id=user_id,
-        result=True
+    attempts_details = AttemptExercise.objects.filter(
+        exercise_id__in=exercises, user_id=user_id
+    )
+
+    correct_attempts = AttemptDetail.objects.filter(
+        general_attempt_id__in=attempts_details.values_list(
+            "general_attempt_id", flat=True
+        ),
+        result=True,
     ).count()
-    total_attempts = AttemptExercise.objects.filter(
-        exercise_id__in=exercises,
-        user_id=user_id
-    ).count()
+
+    total_attempts = attempts_details.aggregate(total=Sum("attempts"))["total"]
+
     return (correct_attempts / total_attempts * 100) if total_attempts else 0
+
 
 def contains_print_statement(code):
     return re.search(r"print\((.*?)\)", code)
@@ -237,7 +246,6 @@ def create_or_update_feedback(
 def update_result_state_and_score(attemp_instance, user, score):
     if attemp_instance.result:
         attemp_instance.score = score
-        user.coins += 10
         user.save()
         attemp_instance.save()
 
@@ -251,20 +259,23 @@ def get_all_exercises_files(exercise_id, response_data):
     try:
         exercise = get_excercise_instance(exercise_id)
 
-        # Handle problem statement file
-        if exercise.problem_statement and hasattr(exercise.problem_statement, "file"):
-            with exercise.problem_statement.open("r") as file:
-                response_data["problem_statement"] = file.read()
+        if exercise.problem_statement:
+            problem_statement_path = os.path.join(
+                settings.MEDIA_ROOT, exercise.problem_statement.name
+            )
+            if os.path.exists(problem_statement_path):
+                with open(problem_statement_path, "r") as file:
+                    response_data["problem_statement"] = file.read()
 
-        # Handle example file
-        if exercise.example and hasattr(exercise.example, "file"):
-            with exercise.example.open("r") as file:
-                response_data["examples"] = file.read()
+        if exercise.example:
+            example_path = os.path.join(settings.MEDIA_ROOT, exercise.example.name)
+            if os.path.exists(example_path):
+                with open(example_path, "r") as file:
+                    response_data["examples"] = file.read()
 
         return response_data
     except Exception as e:
-        print("Error in get all files:", e, flush=True)
-        raise e
+        print(f"Error in get all files: {e}", flush=True)
 
 
 def format_response_data(data):
@@ -295,10 +306,10 @@ def format_entry_data(data):
         return format_item(data)
 
 
-def save_exercise_file(exercise: Exercise, file_content: str, category: str):
+def save_exercise_file(exercise, file_content, category):
     if not exercise.pk:
         raise ValueError("Exercise must have a primary key before saving files.")
-    
+
     file_extension = ".txt"
     filename = f"{category}_{exercise.pk}{file_extension}"
     directory = os.path.join("exercises", str(exercise.pk))
@@ -306,9 +317,11 @@ def save_exercise_file(exercise: Exercise, file_content: str, category: str):
 
     full_media_path = os.path.join(settings.MEDIA_ROOT, directory)
     os.makedirs(full_media_path, exist_ok=True)
-    
+
     existing_file_path = getattr(exercise, category).name
-    if default_storage.exists(existing_file_path):
+
+    if existing_file_path and default_storage.exists(existing_file_path):
+        print(f'Deleting existing file at "{existing_file_path}"', flush=True)
         default_storage.delete(existing_file_path)
 
     default_storage.save(full_path, ContentFile(file_content))
@@ -317,9 +330,7 @@ def save_exercise_file(exercise: Exercise, file_content: str, category: str):
     file_field.name = full_path
     exercise.save(update_fields=[category])
 
-    print(f'File saved to "{full_path}"', flush=True)
     return full_path
-
 
 
 def update_subject_contents(subject_instance, new_contents):
