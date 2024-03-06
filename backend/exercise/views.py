@@ -236,8 +236,12 @@ class ExerciseUpdateViewTeacher(APIView):
 
 
 class ExerciseListView(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
+    if settings.DEVELOPMENT_MODE:
+        authentication_classes = []
+        permission_classes = []
+    else:
+        authentication_classes = [JWTAuthentication]
+        permission_classes = [IsAuthenticated]
 
     def get(self, request):
         try:
