@@ -162,9 +162,12 @@ class ExerciseListSerializerAll(serializers.ModelSerializer):
         total_attempts = AttemptDetail.objects.filter(general_attempt_id__exercise_id=obj).count()
         successful_attempts = AttemptDetail.objects.filter(general_attempt_id__exercise_id=obj, result=True).count()
 
+        print("total_attempts", total_attempts, flush=True)
+        print("successful_attempts", successful_attempts, flush=True)
+        
         if total_attempts > 0:
             success_rate = (successful_attempts / total_attempts) * 100
-            return round(success_rate, 2)
+            return success_rate
         else:
             return 0
 
