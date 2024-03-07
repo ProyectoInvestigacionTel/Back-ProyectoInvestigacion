@@ -143,12 +143,10 @@ class LoginUser(APIView):
     @transaction.atomic
     @swagger_auto_schema(request_body=CustomTokenObtainSerializer)
     def post(self, request):
-        print("FORM:", request.data)
         email = request.data.get("email")
         password = request.data.get("password")
 
         if email and password:
-            print("user found", flush=True)
             user = authenticateUser(email=email, password=password)
             if not user:
                 return Response(
@@ -233,7 +231,6 @@ class LoginUserToken(APIView):
         token_data = {"access": str(refresh.access_token), "refresh": str(refresh)}
 
         user_serializer = CustomUser.objects.get(email=user.email)
-        print((user_serializer.__dict__), flush=True)
 
         user_data = {
             "user_id": user_serializer.user_id,

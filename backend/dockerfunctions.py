@@ -54,7 +54,6 @@ def run_code_in_container(
                 cmd=f"sh -c 'timeout {timeout_seconds} python {code_filename} < {input_filename}'",
                 user="appuser",
             )
-            print(exec_result, flush=True)
             if exec_result.exit_code == 0:
                 result = exec_result.output.decode("utf-8")
             else:

@@ -52,7 +52,6 @@ def authenticate_or_create_user(data):
     subject = context_label.split("_")[3]
     context_title = data.get("context_title")
 
-    print("roles", roles, flush=True)
     if "Instructor" in roles:
         user.roles.add(Rol.objects.get(name=Rol.Teacher))
     elif "Learner" in roles:

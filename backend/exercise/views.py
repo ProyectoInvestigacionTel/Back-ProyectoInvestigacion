@@ -136,10 +136,8 @@ class ExerciseCreateView(APIView):
     def post(self, request):
         try:
             user = request.user
-            print("user: ", user.pk, flush=True)
             data = request.data.copy()
             data["user"] = user.pk
-            print("data: ", data, flush=True)
             serializer = ExerciseSerializerCreate(data=data)
 
             if serializer.is_valid():
@@ -314,15 +312,12 @@ class AttemptExerciseCreateGPTView(APIView):
             return Response(
                 {"error": "Exercise no encontrado"}, status=status.HTTP_404_NOT_FOUND
             )
-        print("Exercise_instance: ", exercise_instance.__dict__)
         attempt_existente = get_current_attempt(request, user)
 
         casos_de_uso = load_use_case(exercise_instance.exercise_id)
-        print("use_cases: ", casos_de_uso)
         result = execute_code(
             code, exercise_instance.head, exercise_instance.tail, casos_de_uso
         )
-        print("result: ", result, flush=True)
         if "Error" in result:
             return Response({"error": result}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -330,7 +325,8 @@ class AttemptExerciseCreateGPTView(APIView):
 
         result_limpio = [linea.strip() for linea in result.splitlines()]
         score, resuelto = compare_outputs_and_calculate_score(
-            outputs_esperados, result_limpio, exercise_instance.binary
+            outputs_esperados, result_limpio, exercise_instance.binary,
+            exercise_instance.score
         )
         results_json = generate_result_json(outputs_esperados, result_limpio)
 
@@ -816,15 +812,12 @@ class AttemptExerciseCreateView(APIView):
             return Response(
                 {"error": "Exercise no encontrado"}, status=status.HTTP_404_NOT_FOUND
             )
-        print("Exercise_instance: ", exercise_instance.__dict__)
         attempt_existente = get_current_attempt(request, user)
 
         casos_de_uso = load_use_case(exercise_instance.exercise_id)
-        print("use_cases: ", casos_de_uso)
         result = execute_code(
             code, exercise_instance.head, exercise_instance.tail, casos_de_uso
         )
-        print("result: ", result, flush=True)
         if "Error" in result:
             return Response({"error": result}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -835,9 +828,9 @@ class AttemptExerciseCreateView(APIView):
             output_limpio = output.strip().rstrip("\n")
             result_limpios.append(output_limpio)
 
-        print("Resultados limpios:", result_limpios, flush=True)
         score, resuelto = compare_outputs_and_calculate_score(
-            outputs_esperados, result_limpios, exercise_instance.binary
+            outputs_esperados, result_limpios, exercise_instance.binary,
+            exercise_instance.score
         )
         results_json = generate_result_json(outputs_esperados, result_limpios)
 
@@ -1005,7 +998,6 @@ class RankingPerSubjectSectionView(APIView):
                 subject__sections__contains=[section], subject__has_key="subject"
             ).values_list("user_id", flat=True)
 
-            print(students_in_section, flush=True)
             attempts_queryset = AttemptExercise.objects.filter(
                 exercise_id__in=exercises, user_id__in=students_in_section
             )

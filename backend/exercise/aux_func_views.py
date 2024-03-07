@@ -123,17 +123,15 @@ def load_use_case(exercise_id):
 
 
 def execute_code(code, head, tail, input_cases):
-    print("Code to execute:", code, flush=True)
-    print("Head:", head, flush=True)
-    print("Tail:", tail, flush=True)
     final_code = "\n".join(filter(None, [head, code, tail]))
-    print("Final code:", final_code, flush=True)
     full_output = run_code_in_container(final_code, input_cases=input_cases)
 
     return full_output
 
 
-def compare_outputs_and_calculate_score(spected_outputs, clean_result, binary):
+def compare_outputs_and_calculate_score(
+    spected_outputs, clean_result, binary, max_score
+):
     correct_outputs = sum(
         spected == real for spected, real in zip(spected_outputs, clean_result)
     )
@@ -142,10 +140,12 @@ def compare_outputs_and_calculate_score(spected_outputs, clean_result, binary):
     if binary:
         # solo obtiene score si todos los casos son correctos
         result = correct_outputs == total_outputs
-        score = 100 if result else 0
+        # Asegurarse de que el score no exceda el score máximo del ejercicio
+        score = max_score if result else 0
     else:
-        #  obtiene score por cada caso correcto
-        score = (correct_outputs / total_outputs) * 100
+        # obtiene score por cada caso correcto y escala según el score máximo del ejercicio
+        score_percentage = correct_outputs / total_outputs
+        score = score_percentage * max_score
         result = correct_outputs == total_outputs
 
     return score, result
@@ -154,12 +154,16 @@ def compare_outputs_and_calculate_score(spected_outputs, clean_result, binary):
 def update_attempt(current_attempt, request, exercise_instance, user, score, result):
     from exercise.serializers import AttemptSaveSerializer
 
+    new_time = request.data["time"]
     if current_attempt:
         current_attempt.attempts += 1
-        if current_attempt.score != exercise_instance.score:
+        if score > current_attempt.score:
             current_attempt.score = score
-        current_attempt.time = request.data["time"]
-        current_attempt.result = result
+        if new_time < current_attempt.time:
+            current_attempt.time = new_time
+        if current_attempt.result != True:
+            current_attempt.result = result
+
         current_attempt.save()
         return current_attempt
     else:

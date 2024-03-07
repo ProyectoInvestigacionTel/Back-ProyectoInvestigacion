@@ -1,6 +1,5 @@
 def generate_avatar_url(email):
     try:
-        print("email: ", email, flush=True)
         base_url = "https://ui-avatars.com/api/"
         name, _ = email.split("@")[0].split(".")
         formatted_name = name.replace(".", " ").title()
