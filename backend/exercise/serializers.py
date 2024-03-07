@@ -159,14 +159,12 @@ class ExerciseListSerializerAll(serializers.ModelSerializer):
         return UseCaseSerializer(use_cases, many=True).data
 
     def get_success_rate(self, obj):
-
-        attempt_ids = AttemptExercise.objects.filter(exercise_id=obj).values_list(
-            "general_attempt_id", flat=True
-        )
-        details = AttemptDetail.objects.filter(general_attempt_id__in=attempt_ids)
-
-        total_attempts = details.count()
-        successful_attempts = details.filter(score__gte=0).count()
+        total_attempts = AttemptDetail.objects.filter(
+            general_attempt_id__exercise_id=obj
+        ).count()
+        successful_attempts = AttemptDetail.objects.filter(
+            general_attempt_id__exercise_id=obj, result=True
+        ).count()
 
         if total_attempts > 0:
             success_rate = (successful_attempts / total_attempts) * 100
