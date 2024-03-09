@@ -1114,8 +1114,17 @@ class CodeExecutionView(APIView):
                 return Response({"error": result}, status=status.HTTP_400_BAD_REQUEST)
 
             outputs_esperados = [str(caso["output"]).strip() for caso in casos_de_uso]
-            result_limpio = [linea.strip() for linea in result.splitlines()]
-            results_json = generate_result_json(outputs_esperados, result_limpio)
+            result_limpios = []
+            for output in result:
+
+                output_limpio = output.strip().rstrip("\n")
+                result_limpios.append(output_limpio)
+
+            score, resuelto = compare_outputs_and_calculate_score(
+                outputs_esperados, result_limpios, exercise_instance.binary,
+                exercise_instance.score
+            )
+            results_json = generate_result_json(outputs_esperados, result_limpios)
 
             return Response(
                 {
