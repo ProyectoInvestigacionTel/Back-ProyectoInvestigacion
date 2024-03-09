@@ -1105,7 +1105,7 @@ class CodeExecutionView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            casos_de_uso = load_use_case(exercise_instance.id)
+            casos_de_uso = load_use_case(exercise_instance.exercise_id)
             result = execute_code(
                 code, exercise_instance.head, exercise_instance.tail, casos_de_uso
             )
