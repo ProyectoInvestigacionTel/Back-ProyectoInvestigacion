@@ -234,7 +234,7 @@ class ExerciseUpdateViewTeacher(APIView):
 
 
 class ExerciseListView(APIView):
-    
+
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
@@ -261,7 +261,7 @@ class ExerciseListView(APIView):
 
 
 class ExerciseListSubjectView(APIView):
-    
+
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
@@ -325,8 +325,10 @@ class AttemptExerciseCreateGPTView(APIView):
 
         result_limpio = [linea.strip() for linea in result.splitlines()]
         score, resuelto = compare_outputs_and_calculate_score(
-            outputs_esperados, result_limpio, exercise_instance.binary,
-            exercise_instance.score
+            outputs_esperados,
+            result_limpio,
+            exercise_instance.binary,
+            exercise_instance.score,
         )
         results_json = generate_result_json(outputs_esperados, result_limpio)
 
@@ -829,8 +831,10 @@ class AttemptExerciseCreateView(APIView):
             result_limpios.append(output_limpio)
 
         score, resuelto = compare_outputs_and_calculate_score(
-            outputs_esperados, result_limpios, exercise_instance.binary,
-            exercise_instance.score
+            outputs_esperados,
+            result_limpios,
+            exercise_instance.binary,
+            exercise_instance.score,
         )
         results_json = generate_result_json(outputs_esperados, result_limpios)
 
@@ -1121,15 +1125,18 @@ class CodeExecutionView(APIView):
                 result_limpios.append(output_limpio)
 
             score, resuelto = compare_outputs_and_calculate_score(
-                outputs_esperados, result_limpios, exercise_instance.binary,
-                exercise_instance.score
+                outputs_esperados,
+                result_limpios,
+                exercise_instance.binary,
+                exercise_instance.score,
             )
             results_json = generate_result_json(outputs_esperados, result_limpios)
 
             return Response(
                 {
-                    "message": "Código ejecutado con éxito",
-                    "result": results_json,
+                    "message": "attempt registrado con éxito",
+                    "result": resuelto,
+                    "detail_use_cases": results_json,
                 },
                 status=status.HTTP_200_OK,
             )
