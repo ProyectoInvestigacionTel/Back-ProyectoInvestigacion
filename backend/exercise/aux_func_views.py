@@ -123,9 +123,13 @@ def load_use_case(exercise_id):
 
 
 def execute_code(code, head, tail, input_cases):
+    if not code.strip():
+        print("Código vacío. Devolviendo salida vacía para cada caso de uso.", flush=True)
+        return ['' for _ in input_cases]
+
     final_code = "\n".join(filter(None, [head, code, tail]))
     full_output = run_code_in_container(final_code, input_cases=input_cases)
-
+    print("Full output:", full_output, flush=True)
     return full_output
 
 

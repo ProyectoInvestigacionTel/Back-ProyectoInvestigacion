@@ -799,7 +799,7 @@ class AttemptExerciseCreateView(APIView):
     def post(self, request, *args, **kwargs):
         user = request.user
 
-        data = format_entry_data(request.data)
+        data = request.data
         code = data.get("code", "")
         user = CustomUser.objects.get(pk=user.user_id)
 
@@ -1098,47 +1098,49 @@ class CodeExecutionView(APIView):
     @swagger_auto_schema(request_body=CodeExecutionSerializer)
     @transaction.atomic
     def post(self, request, *args, **kwargs):
-        serializer = CodeExecutionSerializer(data=request.data)
-        if serializer.is_valid():
-            code = serializer.validated_data["code"]
-            exercise_instance = serializer.validated_data["exercise_id"]
+        user = request.user
 
-            if verify_imports(code):
-                return Response(
-                    {"error": "Librerías importadas detectadas"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+        data = request.data
+        code = data.get("code", "")
+        user = CustomUser.objects.get(pk=user.user_id)
 
-            casos_de_uso = load_use_case(exercise_instance.exercise_id)
-            result = execute_code(
-                code, exercise_instance.head, exercise_instance.tail, casos_de_uso
-            )
+        exercise_instance = get_excercise_instance(data["exercise_id"])
 
-            if "Error" in result:
-                return Response({"error": result}, status=status.HTTP_400_BAD_REQUEST)
 
-            outputs_esperados = [str(caso["output"]).strip() for caso in casos_de_uso]
-            result_limpios = []
-            for output in result:
-
-                output_limpio = output.strip().rstrip("\n")
-                result_limpios.append(output_limpio)
-
-            score, resuelto = compare_outputs_and_calculate_score(
-                outputs_esperados,
-                result_limpios,
-                exercise_instance.binary,
-                exercise_instance.score,
-            )
-            results_json = generate_result_json(outputs_esperados, result_limpios)
-
+        if verify_imports(code):
             return Response(
-                {
-                    "message": "attempt registrado con éxito",
-                    "result": resuelto,
-                    "detail_use_cases": results_json,
-                },
-                status=status.HTTP_200_OK,
+                {"error": "Librerías importadas detectadas"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        casos_de_uso = load_use_case(exercise_instance.exercise_id)
+        result = execute_code(
+            code, exercise_instance.head, exercise_instance.tail, casos_de_uso
+        )
+
+        if "Error" in result:
+            return Response({"error": result}, status=status.HTTP_400_BAD_REQUEST)
+
+        outputs_esperados = [str(caso["output"]).strip() for caso in casos_de_uso]
+        result_limpios = []
+        for output in result:
+
+            output_limpio = output.strip().rstrip("\n")
+            result_limpios.append(output_limpio)
+
+        score, resuelto = compare_outputs_and_calculate_score(
+            outputs_esperados,
+            result_limpios,
+            exercise_instance.binary,
+            exercise_instance.score,
+        )
+        results_json = generate_result_json(outputs_esperados, result_limpios)
+
+        return Response(
+            {
+                "message": "attempt registrado con éxito",
+                "result": resuelto,
+                "detail_use_cases": results_json,
+            },
+            status=status.HTTP_201_CREATED,
+        )
