@@ -24,8 +24,10 @@ def prepare_input_files(container, input_cases: list) -> list:
         input_content = case["input"].strip()
 
         container.exec_run(
-            cmd=f"sh -c \"printf '{input_content}' > {input_filename}\"", user="appuser"
+            cmd=f"sh -c \"printf '%s' '{input_content}' > {input_filename}\"",
+            user="appuser",
         )
+
         input_filenames.append(input_filename)
 
     return input_filenames
@@ -40,7 +42,10 @@ def run_code_in_container(
         container = client.containers.get("run_code")
         input_filenames = prepare_input_files(container, input_cases)
 
-        code_filename = "/app/temp/code.py"
+        code_suffix = "".join(
+            random.choices(string.ascii_lowercase + string.digits, k=6)
+        )
+        code_filename = f"/app/temp/code_{code_suffix}.py"
         corrected_code_base64 = encode_code_to_base64(correct_special_characters(code))
 
         container.exec_run(
@@ -53,6 +58,7 @@ def run_code_in_container(
                 cmd=f"sh -c 'timeout {timeout_seconds} python {code_filename} < {input_filename}'",
                 user="appuser",
             )
+
             if exec_result.exit_code == 0:
                 result = exec_result.output.decode("utf-8")
             else:
@@ -60,6 +66,9 @@ def run_code_in_container(
                     f"Error al ejecutar el código: {exec_result.output.decode('utf-8')}"
                 )
             results.append(result)
+            container.exec_run(cmd=f"rm {input_filename}", user="appuser")
+
+        container.exec_run(cmd=f"rm {code_filename}", user="appuser")
     except NotFound:
         return ["Error: Contenedor 'run_code' no encontrado."]
     except ContainerError as e:

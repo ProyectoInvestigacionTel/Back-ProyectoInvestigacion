@@ -19,7 +19,7 @@ class CustomUserPOSTSerializer(serializers.ModelSerializer):
 
 class CustomUserGETSerializer(serializers.ModelSerializer):
     roles = serializers.SerializerMethodField()
-
+    institution = serializers.CharField(source="institution.name")
     class Meta:
         model = CustomUser
         fields = ("user_id", "email", "name", "roles", "institution","subject","campus",)
