@@ -136,11 +136,15 @@ def execute_code(code, head, tail, input_cases):
 def compare_outputs_and_calculate_score(
     spected_outputs, clean_result, binary, max_score
 ):
+    print("Spected outputs:", spected_outputs, flush=True)
+    print("Clean result:", clean_result, flush=True)
+
     correct_outputs = sum(
         spected == real for spected, real in zip(spected_outputs, clean_result)
     )
+    print("Correct outputs:", correct_outputs, flush=True)
     total_outputs = len(spected_outputs)
-
+    print("Total outputs:", total_outputs, flush=True)
     if binary:
         # solo obtiene score si todos los casos son correctos
         result = correct_outputs == total_outputs
@@ -151,7 +155,8 @@ def compare_outputs_and_calculate_score(
         score_percentage = correct_outputs / total_outputs
         score = score_percentage * max_score
         result = correct_outputs == total_outputs
-
+    print("Result:", result, flush=True)
+    print("Score:", score, flush=True)
     return score, result
 
 

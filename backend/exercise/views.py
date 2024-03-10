@@ -1196,7 +1196,7 @@ class UserRankView(APIView):
             attempts_detail = AttemptDetail.objects.filter(
                 general_attempt_id__in=user_attempts
             )
-            total_score = attempts_detail.aggregate(Sum("score"))["score__sum"] or 0
+            total_score = user_attempts.aggregate(Sum("score"))["score__sum"] or 0
             total_attempts = (
                 user_attempts.aggregate(total=Sum("attempts"))["total"] or 0
             )

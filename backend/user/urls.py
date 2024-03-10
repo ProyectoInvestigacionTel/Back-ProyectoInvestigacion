@@ -6,8 +6,8 @@ from django.views.decorators.csrf import csrf_exempt
 urlpatterns = [
     path("teacher", PostTeacherView.as_view(), name="post_Teacher"),
     path("student", PostStudentView.as_view(), name="post_Student"),
-    path("<str:email>", UserEmailView.as_view(), name="get_usuario"),
-    path("<str:user_id>/", UserIdView.as_view(), name="get_usuario"),
+    path("user_email/<str:email>", UserEmailView.as_view(), name="get_usuario"),
+    path("user_id/<str:user_id>", UserIdView.as_view(), name="get_usuario"),
     # login con jwt
     path("token/", csrf_exempt(LoginUser.as_view()), name="token_obtain_pair"),
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
