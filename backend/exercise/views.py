@@ -437,54 +437,65 @@ class RankingExerciseView(APIView):
 
     def get(self, request, exercise_id):
         try:
-            attempts = AttemptExercise.objects.filter(exercise_id=exercise_id).order_by(
-                "-score"
+            # Obtener todos los intentos para este ejercicio y el número de intentos correctos
+            attempts_details = (
+                AttemptDetail.objects.filter(
+                    general_attempt_id__exercise_id=exercise_id
+                )
+                .values("general_attempt_id__user_id")
+                .annotate(
+                    total_attempts=Count("id"),
+                    correct_attempts=Count("id", filter=Q(result=True)),
+                )
+                .order_by()
             )
 
-            ranking = []
-
-            for attempt in attempts:
-                user = get_user_model().objects.get(pk=attempt.user_id.pk)
-
-                total_attempts = AttemptDetail.objects.filter(
-                    general_attempt_id=attempt.general_attempt_id
-                ).count()
-
-                correct_attempts = AttemptDetail.objects.filter(
-                    general_attempt_id=attempt.general_attempt_id, result=True
-                ).count()
+            # Preparar los datos para el ranking
+            enriched_attempts = []
+            for attempt in attempts_details:
+                user_id = attempt["general_attempt_id__user_id"]
+                user = get_user_model().objects.get(pk=user_id)
 
                 success_rate = (
-                    (correct_attempts / total_attempts * 100) if total_attempts else 0
+                    (attempt["correct_attempts"] / attempt["total_attempts"] * 100)
+                    if attempt["total_attempts"] > 0
+                    else 0
                 )
 
-                ranking.append(
+                # Obtener el score máximo de este usuario para este ejercicio
+                max_score = (
+                    AttemptDetail.objects.filter(
+                        general_attempt_id__exercise_id=exercise_id,
+                        general_attempt_id__user_id=user_id,
+                    ).aggregate(Max("score"))["score__max"]
+                    or 0
+                )
+
+                enriched_attempts.append(
                     {
-                        "user_id": user.pk,
-                        "picture": user.picture.url if user.picture else None,
+                        "user_id": user_id,
                         "name": user.name,
                         "email": user.email,
-                        "total_attempts": total_attempts,
-                        "correct_attempts": correct_attempts,
+                        "picture": user.picture.url if user.picture else None,
+                        "total_attempts": attempt["total_attempts"],
                         "success_rate": success_rate,
-                        "score": attempt.score,
+                        "score": max_score,
                     }
                 )
 
-            # Return the response with the ranking list
-            return Response(ranking, status=status.HTTP_200_OK)
-        except CustomUser.DoesNotExist:
-            return Response(
-                {"error": "User not found"}, status=status.HTTP_404_NOT_FOUND
+            # Ordenar por success_rate descendente y total_attempts ascendente
+            enriched_attempts.sort(
+                key=lambda x: (-x["success_rate"], x["total_attempts"])
             )
-        except AttemptExercise.DoesNotExist:
-            return Response(
-                {"error": "Attempt for Exercise not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+
+            # Asignar ranking
+            for index, attempt in enumerate(enriched_attempts, start=1):
+                attempt["ranking"] = index
+
+            return Response(enriched_attempts, status=status.HTTP_200_OK)
         except Exception as e:
             return Response(
-                {"error": "An unexpected error occurred: " + str(e)},
+                {"error": f"An unexpected error occurred: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -973,6 +984,12 @@ class RankingPerSubjectView(APIView):
                     }
                 )
 
+            enriched_attempts.sort(
+                key=lambda x: (-x["success_rate"], x["total_attempts"])
+            )
+
+            for index, attempt in enumerate(enriched_attempts, start=1):
+                attempt["ranking"] = index
             return Response(enriched_attempts, status=status.HTTP_200_OK)
         except Subject.DoesNotExist:
             return Response(
@@ -1011,11 +1028,21 @@ class RankingPerSubjectSectionView(APIView):
             for user_id in students_in_section:
                 user_attempts = attempts_queryset.filter(user_id=user_id)
                 total_score = user_attempts.aggregate(Sum("score"))["score__sum"] or 0
-                total_attempts = user_attempts.count()
+                total_attempts = (
+                    AttemptExercise.objects.filter(
+                        user_id=user_id, exercise_id__in=exercises
+                    ).aggregate(total=Sum("attempts"))["total"]
+                    or 0
+                )
                 correct_attempts = AttemptDetail.objects.filter(
-                    general_attempt_id__in=user_attempts, result=True
+                    general_attempt_id__in=AttemptExercise.objects.filter(
+                        user_id=user_id, exercise_id__in=exercises
+                    ),
+                    result=True,
                 ).count()
-                exercises_completed = user_attempts.filter(result=True).count()
+                exercises_completed = AttemptExercise.objects.filter(
+                    user_id=user_id, exercise_id__in=exercises, result=True
+                ).count()
                 success_rate = (
                     (correct_attempts / total_attempts * 100.0) if total_attempts else 0
                 )
@@ -1065,6 +1092,13 @@ class RankingPerSubjectSectionView(APIView):
                     }
                 )
 
+            enriched_attempts.sort(
+                key=lambda x: (-x["success_rate"], x["total_attempts"])
+            )
+
+            for index, attempt in enumerate(enriched_attempts, start=1):
+                attempt["ranking"] = index
+
             return Response(enriched_attempts, status=status.HTTP_200_OK)
         except ObjectDoesNotExist:
             return Response(
@@ -1106,7 +1140,6 @@ class CodeExecutionView(APIView):
 
         exercise_instance = get_excercise_instance(data["exercise_id"])
 
-
         if verify_imports(code):
             return Response(
                 {"error": "Librerías importadas detectadas"},
@@ -1144,3 +1177,87 @@ class CodeExecutionView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class UserRankView(APIView):
+    if settings.DEVELOPMENT_MODE:
+        authentication_classes = []
+        permission_classes = []
+    else:
+        authentication_classes = [JWTAuthentication]
+        permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        try:
+            user = CustomUser.objects.get(pk=user_id)
+            subject_info = user.subject.get("subject", "No subject")
+
+            user_attempts = AttemptExercise.objects.filter(user_id=user_id)
+            attempts_detail = AttemptDetail.objects.filter(
+                general_attempt_id__in=user_attempts
+            )
+            total_score = attempts_detail.aggregate(Sum("score"))["score__sum"] or 0
+            total_attempts = (
+                user_attempts.aggregate(total=Sum("attempts"))["total"] or 0
+            )
+            correct_attempts = AttemptDetail.objects.filter(
+                general_attempt_id__in=user_attempts, result=True
+            ).count()
+            exercises_completed = user_attempts.filter(result=True).count()
+            success_rate = (
+                (correct_attempts / total_attempts * 100.0) if total_attempts else 0
+            )
+
+            average_score = (
+                AttemptDetail.objects.filter(
+                    general_attempt_id__in=user_attempts
+                ).aggregate(Avg("score"))["score__avg"]
+                or 0
+            )
+            min_score = (
+                AttemptDetail.objects.filter(
+                    general_attempt_id__in=user_attempts
+                ).aggregate(Min("score"))["score__min"]
+                or 0
+            )
+            max_score = (
+                AttemptDetail.objects.filter(
+                    general_attempt_id__in=user_attempts
+                ).aggregate(Max("score"))["score__max"]
+                or 0
+            )
+
+            enriched_attempt = {
+                "user_id": user_id,
+                "total_score": total_score,
+                "exercises_completed": exercises_completed,
+                "correct_attempts": correct_attempts,
+                "total_attempts": total_attempts,
+                "success_rate": success_rate,
+                "average_score": average_score,
+                "min_score": min_score,
+                "max_score": max_score,
+                "user_details": {
+                    "name": user.name,
+                    "email": user.email,
+                    "picture": user.picture.url if user.picture else None,
+                },
+                "difficulty_success_rates": calculate_success_rate_for_difficulties(
+                    user_id, Exercise.objects.all()
+                ),
+                "content_success_rates": calculate_success_rate_for_contents(
+                    user_id, Exercise.objects.all(), subject_info
+                ),
+            }
+
+            return Response(enriched_attempt, status=status.HTTP_200_OK)
+        except CustomUser.DoesNotExist:
+            return Response(
+                {"error": "User not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"An unexpected error occurred: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

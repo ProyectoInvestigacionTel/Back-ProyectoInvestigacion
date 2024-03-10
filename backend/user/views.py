@@ -108,10 +108,39 @@ class PostTeacherView(APIView):
         )
 
 
-class UserView(APIView):
+class UserEmailView(APIView):
     def get(self, request, email, *args, **kwargs):
         try:
             user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            return Response(
+                {"error": "Usuario no encontrado"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if (
+            user.roles.filter(name="Teacher").exists()
+            or user.roles.filter(name="TeacherAssistant").exists()
+            or user.roles.filter(name="Coordinator").exists()
+        ):
+            teacher_instance = Teacher.objects.get(user=user)
+            serializer = TeacherGETSerializer(teacher_instance)
+        elif user.roles.filter(name="Student").exists():
+            student_instance = Student.objects.get(user=user)
+            serializer = StudentGETSerializer(student_instance)
+        elif user.roles.filter(name="ADMIN").exists():
+            serializer = CustomUserGETSerializer(user)
+        else:
+            return Response(
+                {"error": "Rol de usuario no válido"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class UserIdView(APIView):
+    def get(self, request, user_id):
+        try:
+            user = CustomUser.objects.get(user_id=user_id)
         except CustomUser.DoesNotExist:
             return Response(
                 {"error": "Usuario no encontrado"},
@@ -336,3 +365,4 @@ class UserPhotoView(APIView):
                 {"error": "No se pudo obtener la foto"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+

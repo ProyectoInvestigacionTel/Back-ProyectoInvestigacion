@@ -83,8 +83,8 @@ urlpatterns = [
         ExerciseGeneratorView.as_view(),
         name="exercise-generator",
     ),
+    path('user_info/<str:user_id>', UserRankView.as_view(), name="user-info"),
     path('execute_code', CodeExecutionView.as_view(), name="execute-code"),
     path("feedback/<int:feedback_id>",FeedbackInfoView.as_view(), name="feedback-info"),
     path("use_cases/", include("exercise.use_case.urls")),
-    
 ]

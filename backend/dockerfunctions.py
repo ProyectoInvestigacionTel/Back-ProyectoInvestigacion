@@ -22,7 +22,7 @@ def prepare_input_files(container, input_cases: list) -> list:
         input_filename = f"/app/temp/input_{i}_{random_suffix}.txt"
 
         input_content = case["input"].strip()
-        # Asegúrate de escapar correctamente los caracteres especiales aquí si es necesario
+
         container.exec_run(
             cmd=f"sh -c \"printf '{input_content}' > {input_filename}\"", user="appuser"
         )
@@ -43,7 +43,6 @@ def run_code_in_container(
         code_filename = "/app/temp/code.py"
         corrected_code_base64 = encode_code_to_base64(correct_special_characters(code))
 
-        # Escribe el código corregido en el archivo .py dentro del contenedor
         container.exec_run(
             cmd=f'sh -c "echo {corrected_code_base64} | base64 --decode > {code_filename}"',
             user="appuser",
@@ -61,13 +60,6 @@ def run_code_in_container(
                     f"Error al ejecutar el código: {exec_result.output.decode('utf-8')}"
                 )
             results.append(result)
-
-            # Limpieza: elimina el archivo de entrada actual
-            # container.exec_run(cmd=f"rm {input_filename}", user="appuser")
-
-        # Opcional: Limpieza del archivo .py
-        # container.exec_run(cmd=f"rm {code_filename}", user="appuser")
-
     except NotFound:
         return ["Error: Contenedor 'run_code' no encontrado."]
     except ContainerError as e:
