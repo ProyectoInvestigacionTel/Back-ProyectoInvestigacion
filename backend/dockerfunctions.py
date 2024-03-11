@@ -12,23 +12,24 @@ def encode_code_to_base64(code: str) -> str:
 def correct_special_characters(code_str: str) -> str:
     return code_str.replace("'", '"')
 
+def generate_random_filename(prefix, suffix):
+    random_string = "".join(random.choices(string.ascii_lowercase + string.digits, k=10))
+    return f"/app/temp/{prefix}_{random_string}.{suffix}"
 
 def prepare_input_files(container, input_cases: list) -> list:
     input_filenames = []
     for i, case in enumerate(input_cases):
-        random_suffix = "".join(
-            random.choices(string.ascii_lowercase + string.digits, k=6)
-        )
-        input_filename = f"/app/temp/input_{i}_{random_suffix}.txt"
-
-        input_content = case["input"].strip()
+        input_filename = generate_random_filename(f"input_{i}", "txt")
+        input_content = f"{case['input'].strip()}\n"
+        input_content_base64 = base64.b64encode(input_content.encode()).decode()
 
         container.exec_run(
-            cmd=f"sh -c \"printf '%s' '{input_content}' > {input_filename}\"",
-            user="appuser",
+            cmd=f'sh -c "echo {input_content_base64} | base64 --decode > {input_filename}"', user="appuser"
         )
 
         input_filenames.append(input_filename)
+        print(f"Input file {i} created: {input_filename}", flush=True)
+        print(f'Input content before base64: {input_content}', flush=True)
 
     return input_filenames
 
@@ -42,10 +43,7 @@ def run_code_in_container(
         container = client.containers.get("run_code")
         input_filenames = prepare_input_files(container, input_cases)
 
-        code_suffix = "".join(
-            random.choices(string.ascii_lowercase + string.digits, k=6)
-        )
-        code_filename = f"/app/temp/code_{code_suffix}.py"
+        code_filename = generate_random_filename("code", "py")
         corrected_code_base64 = encode_code_to_base64(correct_special_characters(code))
 
         container.exec_run(

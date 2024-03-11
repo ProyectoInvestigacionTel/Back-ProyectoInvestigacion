@@ -129,7 +129,6 @@ def execute_code(code, head, tail, input_cases):
 
     final_code = "\n".join(filter(None, [head, code, tail]))
     full_output = run_code_in_container(final_code, input_cases=input_cases)
-    print("Full output:", full_output, flush=True)
     return full_output
 
 
