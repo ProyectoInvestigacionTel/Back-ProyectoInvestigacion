@@ -224,7 +224,7 @@ class LoginUser(APIView):
         access_token = jwt.encode(access_token_payload, SECRET_KEY, algorithm="HS256")
 
         # Redirige al usuario con los tokens y user_data incluidos en el accessToken
-        redirect_url = f"http://localhost:3000/auth?accessToken={access_token}&refreshToken={refresh_token}"
+        redirect_url = f"https://teloprogramo.cl/auth?accessToken={access_token}&refreshToken={refresh_token}"
         return redirect(redirect_url)
 
 
