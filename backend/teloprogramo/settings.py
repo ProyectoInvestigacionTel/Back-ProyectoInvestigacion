@@ -164,6 +164,8 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 100,
 }
 
+CSRF_TRUSTED_ORIGINS = ["https://teloprogramo.cl", "http://localhost:3000"]
+
 
 # Simple JWT
 SIMPLE_JWT = {

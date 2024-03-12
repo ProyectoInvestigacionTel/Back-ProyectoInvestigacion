@@ -26,7 +26,7 @@ class Rol(models.Model):
 
 
 class CustomUserManager(BaseUserManager):
-    def create_user(self, user_id, email, name, institution, campus, password=None):
+    def create_user(self, user_id, email, name, institution, campus,subject, password=None):
         if CustomUser.objects.filter(user_id=user_id).exists():
             raise ValueError("Un usuario con este user_id ya existe")
         if not email:
@@ -38,16 +38,17 @@ class CustomUserManager(BaseUserManager):
         user = self.model(email=email, name=name, user_id=user_id)
         user.set_password(password)
         user.campus = campus
+        user.subject = subject
         user.institution = institution
         user.save(using=self._db)
         return user
 
     def create_superuser(
-        self, user_id, email, name, institution, campus, password=None
+        self, user_id, email, name, institution, campus,subject, password=None
     ):
         admin_role = Rol.objects.get(name=Rol.ADMIN)
 
-        user = self.create_user(user_id, email, name, institution, campus, password)
+        user = self.create_user(user_id, email, name, institution, campus,subject, password)
         user.roles.add(admin_role)
         user.is_superuser = True
         user.is_staff = True

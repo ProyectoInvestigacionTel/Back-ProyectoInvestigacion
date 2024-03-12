@@ -23,6 +23,7 @@ class Command(BaseCommand):
                 password="admin",
                 institution=institution_id,
                 campus="Santiago San Joaquín",
+                subject=subject
             )
             CustomUser.objects.create_user(
                 user_id="01",
@@ -31,15 +32,14 @@ class Command(BaseCommand):
                 password="test",
                 institution=institution_id,
                 campus="Santiago San Joaquín",
+                subject=subject
             )
             Student.objects.create(
                 user=CustomUser.objects.get(user_id="01"),
-                subject=subject,
                 semester="2024-1",
             )
             Student.objects.create(
                 user=CustomUser.objects.get(user_id="02"),
-                subject=subject,
                 semester="2024-1",
             )
             self.stdout.write(self.style.SUCCESS("Superusuario creado exitosamente"))
