@@ -122,10 +122,10 @@ class UserEmailView(APIView):
             or user.roles.filter(name="TeacherAssistant").exists()
             or user.roles.filter(name="Coordinator").exists()
         ):
-            teacher_instance = Teacher.objects.get(user=user)
+            teacher_instance = Teacher.objects.get(user=user.user_id)
             serializer = TeacherGETSerializer(teacher_instance)
         elif user.roles.filter(name="Student").exists():
-            student_instance = Student.objects.get(user=user)
+            student_instance = Student.objects.get(user=user.user_id)
             serializer = StudentGETSerializer(student_instance)
         elif user.roles.filter(name="ADMIN").exists():
             serializer = CustomUserGETSerializer(user)
@@ -151,10 +151,10 @@ class UserIdView(APIView):
             or user.roles.filter(name="TeacherAssistant").exists()
             or user.roles.filter(name="Coordinator").exists()
         ):
-            teacher_instance = Teacher.objects.get(user=user)
+            teacher_instance = Teacher.objects.get(user=user.user_id)
             serializer = TeacherGETSerializer(teacher_instance)
         elif user.roles.filter(name="Student").exists():
-            student_instance = Student.objects.get(user=user)
+            student_instance = Student.objects.get(user=user.user_id)
             serializer = StudentGETSerializer(student_instance)
         elif user.roles.filter(name="ADMIN").exists():
             serializer = CustomUserGETSerializer(user)
