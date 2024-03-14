@@ -12,7 +12,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 schema_view = get_schema_view(
     openapi.Info(
-        url="http://localhost:8001/api",
+        url="https://localhost:8001/api",
         title="Tu API",
         default_version="v1",
         description="Descripción de tu API",
