@@ -173,8 +173,10 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": datetime.timedelta(hours=1),
 }
 
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 SWAGGER_SETTINGS = {
-    "DEFAULT_API_URL": "http://localhost:8001/api",
+    "DEFAULT_API_URL": "https://localhost:8001/api",
     "SECURITY_DEFINITIONS": {
         "Bearer": {
             "type": "apiKey",
