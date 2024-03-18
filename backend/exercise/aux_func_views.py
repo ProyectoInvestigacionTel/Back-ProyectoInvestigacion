@@ -114,7 +114,7 @@ def calculate_completed_by_content(user_id, exercises, subject_name):
     for content in contents:
         content_exercises_ids = exercises.filter(
             contents__icontains=content
-        ).values_list("id", flat=True)
+        ).values_list("exercise_id", flat=True)
         completed_exercises = (
             AttemptExercise.objects.filter(
                 user_id=user_id, exercise_id__in=content_exercises_ids, result=True
