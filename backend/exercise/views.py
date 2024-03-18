@@ -406,7 +406,7 @@ class InfoExercisesPerUserView(APIView):
                 "max_score": attempt_details.aggregate(Max("score"))["score__max"],
                 "min_score": attempt_details.aggregate(Min("score"))["score__min"],
                 "avg_score": attempt_details.aggregate(Avg("score"))["score__avg"],
-                "result":attempt_details.result
+                "result":attempts_exercises.result
             }
 
             for detail in attempt_details:
