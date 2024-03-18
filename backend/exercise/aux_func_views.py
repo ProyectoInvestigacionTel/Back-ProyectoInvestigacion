@@ -91,7 +91,7 @@ def calculate_completed_by_difficulty(user_id, exercises):
 
     for difficulty in difficulties:
         difficulty_exercises_ids = exercises.filter(difficulty=difficulty).values_list(
-            "id", flat=True
+            "exercise_id", flat=True
         )
         completed_exercises = (
             AttemptExercise.objects.filter(
