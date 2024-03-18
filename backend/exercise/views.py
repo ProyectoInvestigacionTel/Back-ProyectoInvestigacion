@@ -395,7 +395,6 @@ class InfoExercisesPerUserView(APIView):
             attempt_details = AttemptDetail.objects.filter(
                 general_attempt_id=attempt_exercise
             ).order_by("date")
-            print(attempts_exercises,flush=True)
             attempt_data = {
                 "exercise_id": exercise.exercise_id,
                 "title": exercise.title,
@@ -406,7 +405,7 @@ class InfoExercisesPerUserView(APIView):
                 "max_score": attempt_details.aggregate(Max("score"))["score__max"],
                 "min_score": attempt_details.aggregate(Min("score"))["score__min"],
                 "avg_score": attempt_details.aggregate(Avg("score"))["score__avg"],
-                "result":attempts_exercises.result
+                "result":exercise.result
             }
 
             for detail in attempt_details:
