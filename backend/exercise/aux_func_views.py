@@ -23,14 +23,6 @@ def calculate_success_rate_for_difficulties(user_id, exercises):
     return difficulty_success_rates
 
 
-def calculate_completed(exercises, user_id):
-    completed = {}
-    for exercise in exercises:
-        is_completed = AttemptExercise.objects.filter(
-            user_id=user_id, exercise_id=exercise.exercise_id, result=True
-        ).exists()
-        completed[exercise.id] = is_completed
-    return completed
 
 
 def calculate_success_rate_for_contents(user_id, exercises, subject_name):
@@ -43,6 +35,9 @@ def calculate_success_rate_for_contents(user_id, exercises, subject_name):
             content_exercises, user_id
         )
     return content_success_rates
+
+
+
 
 
 def calculate_fail_rate(exercises, user_id):
@@ -58,75 +53,61 @@ def calculate_fail_rate(exercises, user_id):
     return (failed_attempts / total_attempts * 100.0) if total_attempts else 0
 
 
-def calculate_fail_rate_and_completed_for_difficulties(user_id, exercises):
-    difficulties = exercises.values_list("difficulty", flat=True).distinct()
-    difficulty_metrics = {}
-
-    for difficulty in difficulties:
-        difficulty_exercises = exercises.filter(difficulty=difficulty)
-        difficulty_metrics[difficulty] = {
-            "fail_rate": calculate_fail_rate(difficulty_exercises, user_id),
-            "completed": calculate_completed(difficulty_exercises, user_id),
-        }
-    return difficulty_metrics
-
-
-def calculate_fail_rate_and_completed_for_contents(user_id, exercises, subject_name):
-    subject_instance = Subject.objects.get(name=subject_name)
-    contents = subject_instance.contents.split(",")
-    content_metrics = {}
-
-    for content in contents:
-        content_exercises = exercises.filter(contents__icontains=content)
-        content_metrics[content] = {
-            "fail_rate": calculate_fail_rate(content_exercises, user_id),
-            "completed": calculate_completed(content_exercises, user_id),
-        }
-    return content_metrics
-
-
-def calculate_completed_by_difficulty(user_id, exercises):
+def calculate_completed_for_difficulties(user_id, exercises):
     completed_by_difficulty = {}
-    difficulties = exercises.values_list("difficulty", flat=True).distinct()
+    for difficulty in ["Fácil", "Medio", "Dificil"]:
+        difficulty_exercises = exercises.filter(difficulty=difficulty)
+        completed_exercises_count = AttemptExercise.objects.filter(
+            exercise_id__in=difficulty_exercises, user_id=user_id, result=True
+        ).distinct('exercise_id').count()
 
-    for difficulty in difficulties:
-        difficulty_exercises_ids = exercises.filter(difficulty=difficulty).values_list(
-            "exercise_id", flat=True
-        )
-        completed_exercises = (
-            AttemptExercise.objects.filter(
-                user_id=user_id, exercise_id__in=difficulty_exercises_ids, result=True
-            )
-            .distinct("exercise_id")
-            .count()
-        )
-
-        completed_by_difficulty[difficulty] = completed_exercises
-
+        completed_by_difficulty[difficulty] = completed_exercises_count
     return completed_by_difficulty
 
+def calculate_fail_rate_for_difficulties(user_id, exercises):
+    fail_rate_by_difficulty = {}
+    for difficulty in ["Fácil", "Medio", "Dificil"]:
+        difficulty_exercises = exercises.filter(difficulty=difficulty)
+        total_attempts = AttemptExercise.objects.filter(
+            exercise_id__in=difficulty_exercises, user_id=user_id
+        ).count()
+        failed_attempts = AttemptExercise.objects.filter(
+            exercise_id__in=difficulty_exercises, user_id=user_id, result=False
+        ).count()
 
-def calculate_completed_by_content(user_id, exercises, subject_name):
+        fail_rate = (failed_attempts / total_attempts * 100.0) if total_attempts else 0
+        fail_rate_by_difficulty[difficulty] = fail_rate
+    return fail_rate_by_difficulty
+
+def calculate_completed_for_contents(user_id, exercises, subject_name):
     completed_by_content = {}
     subject_instance = Subject.objects.get(name=subject_name)
     contents = subject_instance.contents.split(",")
-
     for content in contents:
-        content_exercises_ids = exercises.filter(
-            contents__icontains=content
-        ).values_list("exercise_id", flat=True)
-        completed_exercises = (
-            AttemptExercise.objects.filter(
-                user_id=user_id, exercise_id__in=content_exercises_ids, result=True
-            )
-            .distinct("exercise_id")
-            .count()
-        )
+        content_exercises = exercises.filter(contents__icontains=content)
+        completed_exercises_count = AttemptExercise.objects.filter(
+            exercise_id__in=content_exercises, user_id=user_id, result=True
+        ).distinct('exercise_id').count()
 
-        completed_by_content[content] = completed_exercises
-
+        completed_by_content[content] = completed_exercises_count
     return completed_by_content
 
+def calculate_fail_rate_for_contents(user_id, exercises, subject_name):
+    fail_rate_by_content = {}
+    subject_instance = Subject.objects.get(name=subject_name)
+    contents = subject_instance.contents.split(",")
+    for content in contents:
+        content_exercises = exercises.filter(contents__icontains=content)
+        total_attempts = AttemptExercise.objects.filter(
+            exercise_id__in=content_exercises, user_id=user_id
+        ).count()
+        failed_attempts = AttemptExercise.objects.filter(
+            exercise_id__in=content_exercises, user_id=user_id, result=False
+        ).count()
+
+        fail_rate = (failed_attempts / total_attempts * 100.0) if total_attempts else 0
+        fail_rate_by_content[content] = fail_rate
+    return fail_rate_by_content
 
 def calculate_success_rate(exercises, user_id):
     attempts_details = AttemptExercise.objects.filter(

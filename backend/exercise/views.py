@@ -988,10 +988,10 @@ class RankingPerSubjectView(APIView):
                         "content_success_rates": calculate_success_rate_for_contents(
                             user_id, exercises, subject
                         ),
-                        "difficulty_fail_rates": calculate_fail_rate_and_completed_for_difficulties(user_id, exercises),
-                        "content_fail_rates": calculate_fail_rate_and_completed_for_contents(user_id, exercises, subject),
-                        "difficulty_completed": calculate_completed_by_difficulty(user_id, exercises),
-                        "content_completed": calculate_completed_by_content(user_id, exercises, subject),
+                        "difficulty_fail_rates": calculate_fail_rate_for_difficulties(user_id, exercises),
+                        "content_fail_rates": calculate_fail_rate_for_contents(user_id, exercises, subject),
+                        "difficulty_completed": calculate_completed_for_difficulties(user_id, exercises),
+                        "content_completed": calculate_completed_for_contents(user_id, exercises, subject),
                     }
                 )
 
@@ -1101,10 +1101,10 @@ class RankingPerSubjectSectionView(APIView):
                         "content_success_rates": calculate_success_rate_for_contents(
                             user_id, exercises, subject
                         ),
-                        "difficulty_fail_rates": calculate_fail_rate_and_completed_for_difficulties(user_id, exercises),
-                        "content_fail_rates": calculate_fail_rate_and_completed_for_contents(user_id, exercises, subject),
-                        "difficulty_completed": calculate_completed_by_difficulty(user_id, exercises),
-                        "content_completed": calculate_completed_by_content(user_id, exercises, subject),
+                        "difficulty_fail_rates": calculate_fail_rate_for_difficulties(user_id, exercises),
+                        "content_fail_rates": calculate_fail_rate_for_contents(user_id, exercises, subject),
+                        "difficulty_completed": calculate_completed_for_difficulties(user_id, exercises),
+                        "content_completed": calculate_completed_for_contents(user_id, exercises, subject),
                     }
                 )
 
