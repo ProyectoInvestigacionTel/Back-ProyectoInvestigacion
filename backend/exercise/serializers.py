@@ -122,6 +122,7 @@ class ExerciseSerializerUpdateTeacher(serializers.ModelSerializer):
 class ExerciseSerializerView(serializers.ModelSerializer):
     use_cases = serializers.SerializerMethodField()
     files_data = serializers.SerializerMethodField()
+    username = serializers.SerializerMethodField()
 
     class Meta:
         model = Exercise
@@ -136,13 +137,15 @@ class ExerciseSerializerView(serializers.ModelSerializer):
     def get_use_cases(self, obj):
         use_cases = UseCase.objects.filter(exercise=obj)
         return UseCaseSerializer(use_cases, many=True).data
-
+    def get_username(self, obj):
+        return obj.user.name
 
 class ExerciseListSerializerAll(serializers.ModelSerializer):
     files_data = serializers.SerializerMethodField()
     use_cases = serializers.SerializerMethodField()
     success_rate = serializers.SerializerMethodField()
     user_attempts_info = serializers.SerializerMethodField()
+    username = serializers.SerializerMethodField()
 
     class Meta:
         model = Exercise
@@ -167,6 +170,8 @@ class ExerciseListSerializerAll(serializers.ModelSerializer):
             return success_rate
         else:
             return 0
+    def get_username(self, obj):
+        return obj.user.name
 
     def get_user_attempts_info(self, obj):
         user = self.context.get("request").user

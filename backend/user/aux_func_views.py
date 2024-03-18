@@ -1,6 +1,7 @@
 import random
 import string
 from institution.models import Institution
+from datetime import datetime
 
 from user.models import CustomUser, Rol, Student, Teacher
 from django.contrib.auth import get_user_model
@@ -49,9 +50,12 @@ def authenticate_or_create_user(data):
             "password": generate_random_password(),
             "institution": institution,
             "subject": subject_info,
+            "campus": get_campus_usm(sections[0]),
         },
     )
-
+    current_year = datetime.now().year
+    semester_half = "1" if datetime.now().month < 7 else "2"
+    semester = f"{current_year}-{semester_half}"
     if "Instructor" in roles:
         user.roles.add(Rol.objects.get(name=Rol.Teacher))
         Teacher.objects.update_or_create(user=user)
@@ -59,6 +63,7 @@ def authenticate_or_create_user(data):
         user.roles.add(Rol.objects.get(name=Rol.Student))
         Student.objects.update_or_create(
             user=user,
+            defaults={"semester": semester},
         )
 
     user.save()
