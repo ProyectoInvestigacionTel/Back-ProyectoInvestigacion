@@ -395,7 +395,7 @@ class InfoExercisesPerUserView(APIView):
             attempt_details = AttemptDetail.objects.filter(
                 general_attempt_id=attempt_exercise
             ).order_by("date")
-
+            print(attempts_exercises,flush=True)
             attempt_data = {
                 "exercise_id": exercise.exercise_id,
                 "title": exercise.title,
