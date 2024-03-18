@@ -1264,6 +1264,11 @@ class UserRankView(APIView):
                 "content_success_rates": calculate_success_rate_for_contents(
                     user_id, Exercise.objects.all(), subject_info
                 ),
+                "difficulty_fail_rates": calculate_fail_rate_for_difficulties(user_id, Exercise.objects.all()),
+                "content_fail_rates": calculate_fail_rate_for_contents(user_id, Exercise.objects.all(), subject_info),
+                "difficulty_completed": calculate_completed_for_difficulties(user_id, Exercise.objects.all()),
+                "content_completed": calculate_completed_for_contents(user_id, Exercise.objects.all(), subject_info),
+
             }
 
             return Response(enriched_attempt, status=status.HTTP_200_OK)
