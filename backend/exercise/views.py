@@ -395,7 +395,6 @@ class InfoExercisesPerUserView(APIView):
             attempt_details = AttemptDetail.objects.filter(
                 general_attempt_id=attempt_exercise
             ).order_by("date")
-
             attempt_data = {
                 "exercise_id": exercise.exercise_id,
                 "title": exercise.title,
@@ -406,6 +405,7 @@ class InfoExercisesPerUserView(APIView):
                 "max_score": attempt_details.aggregate(Max("score"))["score__max"],
                 "min_score": attempt_details.aggregate(Min("score"))["score__min"],
                 "avg_score": attempt_details.aggregate(Avg("score"))["score__avg"],
+                "result":attempt_exercise.result
             }
 
             for detail in attempt_details:
@@ -971,6 +971,7 @@ class RankingPerSubjectView(APIView):
                         "correct_attempts": correct_attempts,
                         "total_attempts": total_attempts,
                         "success_rate": success_rate,
+                        "fail_rate":calculate_fail_rate(exercises, user_id),
                         "average_score": average_score,
                         "min_score": min_score,
                         "max_score": max_score,
@@ -981,6 +982,16 @@ class RankingPerSubjectView(APIView):
                             "email": user.email,
                             "picture": user.picture.url if user.picture else None,
                         },
+                         "difficulty_success_rates": calculate_success_rate_for_difficulties(
+                            user_id, exercises
+                        ),
+                        "content_success_rates": calculate_success_rate_for_contents(
+                            user_id, exercises, subject
+                        ),
+                        "difficulty_fail_rates": calculate_fail_rate_for_difficulties(user_id, exercises),
+                        "content_fail_rates": calculate_fail_rate_for_contents(user_id, exercises, subject),
+                        "difficulty_completed": calculate_completed_for_difficulties(user_id, exercises),
+                        "content_completed": calculate_completed_for_contents(user_id, exercises, subject),
                     }
                 )
 
@@ -1075,6 +1086,7 @@ class RankingPerSubjectSectionView(APIView):
                         "correct_attempts": correct_attempts,
                         "total_attempts": total_attempts,
                         "success_rate": success_rate,
+                        "fail_rate":calculate_fail_rate(exercises, user_id),
                         "average_score": average_score,
                         "min_score": min_score,
                         "max_score": max_score,
@@ -1089,6 +1101,10 @@ class RankingPerSubjectSectionView(APIView):
                         "content_success_rates": calculate_success_rate_for_contents(
                             user_id, exercises, subject
                         ),
+                        "difficulty_fail_rates": calculate_fail_rate_for_difficulties(user_id, exercises),
+                        "content_fail_rates": calculate_fail_rate_for_contents(user_id, exercises, subject),
+                        "difficulty_completed": calculate_completed_for_difficulties(user_id, exercises),
+                        "content_completed": calculate_completed_for_contents(user_id, exercises, subject),
                     }
                 )
 

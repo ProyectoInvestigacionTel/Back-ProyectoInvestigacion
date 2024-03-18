@@ -13,6 +13,23 @@ from subject.models import Subject
 from django.db.models import Count, Sum
 
 
+def calculate_success_rate(exercises, user_id):
+    attempts_details = AttemptExercise.objects.filter(
+        exercise_id__in=exercises, user_id=user_id
+    )
+
+    correct_attempts = AttemptDetail.objects.filter(
+        general_attempt_id__in=attempts_details.values_list(
+            "general_attempt_id", flat=True
+        ),
+        result=True,
+    ).count()
+
+    total_attempts = attempts_details.aggregate(total=Sum("attempts"))["total"]
+
+    return (correct_attempts / total_attempts * 100) if total_attempts else 0
+
+
 def calculate_success_rate_for_difficulties(user_id, exercises):
     difficulty_success_rates = {}
     for difficulty in ["Fácil", "Medio", "Dificil"]:
@@ -35,22 +52,63 @@ def calculate_success_rate_for_contents(user_id, exercises, subject_name):
     return content_success_rates
 
 
-def calculate_success_rate(exercises, user_id):
+def calculate_fail_rate(exercises, user_id):
     attempts_details = AttemptExercise.objects.filter(
         exercise_id__in=exercises, user_id=user_id
     )
 
-    correct_attempts = AttemptDetail.objects.filter(
+    fail_attempts = AttemptDetail.objects.filter(
         general_attempt_id__in=attempts_details.values_list(
             "general_attempt_id", flat=True
         ),
-        result=True,
+        result=False,
     ).count()
 
     total_attempts = attempts_details.aggregate(total=Sum("attempts"))["total"]
 
-    return (correct_attempts / total_attempts * 100) if total_attempts else 0
+    return (fail_attempts / total_attempts * 100) if total_attempts else 0
 
+
+def calculate_fail_rate_for_difficulties(user_id, exercises):
+    fail_rate_by_difficulty = {}
+    for difficulty in ["Fácil", "Medio", "Difícil"]:
+        difficulty_exercises = exercises.filter(difficulty=difficulty)
+        fail_rate_by_difficulty[difficulty] = calculate_fail_rate(difficulty_exercises, user_id)
+    return fail_rate_by_difficulty
+
+def calculate_fail_rate_for_contents(user_id, exercises, subject_name):
+    fail_rate_by_content = {}
+    subject_instance = Subject.objects.get(name=subject_name)
+    contents = subject_instance.contents.split(",")
+    for content in contents:
+        content_exercises = exercises.filter(contents__icontains=content)
+        fail_rate_by_content[content] = calculate_fail_rate(content_exercises, user_id)
+    return fail_rate_by_content
+
+
+def calculate_completed_for_difficulties(user_id, exercises):
+    completed_by_difficulty = {}
+    for difficulty in ["Fácil", "Medio", "Difícil"]:
+        difficulty_exercises = exercises.filter(difficulty=difficulty)
+        completed_exercises_count = AttemptExercise.objects.filter(
+            exercise_id__in=difficulty_exercises, user_id=user_id, result=True
+        ).distinct('exercise_id').count()
+
+        completed_by_difficulty[difficulty] = completed_exercises_count
+    return completed_by_difficulty
+
+def calculate_completed_for_contents(user_id, exercises, subject_name):
+    completed_by_content = {}
+    subject_instance = Subject.objects.get(name=subject_name)
+    contents = subject_instance.contents.split(",")
+    for content in contents:
+        content_exercises = exercises.filter(contents__icontains=content)
+        completed_exercises_count = AttemptExercise.objects.filter(
+            exercise_id__in=content_exercises, user_id=user_id, result=True
+        ).distinct('exercise_id').count()
+
+        completed_by_content[content] = completed_exercises_count
+    return completed_by_content
 
 def contains_print_statement(code):
     return re.search(r"print\((.*?)\)", code)
@@ -124,8 +182,10 @@ def load_use_case(exercise_id):
 
 def execute_code(code, head, tail, input_cases):
     if not code.strip():
-        print("Código vacío. Devolviendo salida vacía para cada caso de uso.", flush=True)
-        return ['' for _ in input_cases]
+        print(
+            "Código vacío. Devolviendo salida vacía para cada caso de uso.", flush=True
+        )
+        return ["" for _ in input_cases]
 
     final_code = "\n".join(filter(None, [head, code, tail]))
     full_output = run_code_in_container(final_code, input_cases=input_cases)
