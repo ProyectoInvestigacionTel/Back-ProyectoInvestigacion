@@ -27,7 +27,7 @@ def calculate_completed(exercises, user_id):
     completed = {}
     for exercise in exercises:
         is_completed = AttemptExercise.objects.filter(
-            user_id=user_id, exercise_id=exercise.id, result=True
+            user_id=user_id, exercise_id=exercise.exercise_id, result=True
         ).exists()
         completed[exercise.id] = is_completed
     return completed
