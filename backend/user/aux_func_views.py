@@ -34,9 +34,9 @@ def authenticate_or_create_user(data):
     subject = context_label.split("_")[3]
     context_title = data.get("context_title")
 
-    sections = [
-        section.strip() for section in context_title.split("Paralelos:")[1].split(",")
-    ]
+    sections_str = context_title.split("Paralelos:")[1]
+    sections = sections_str.split("/")
+    sections = [section.strip() for section in sections]
 
     subject_info = {"subject": subject, "sections": sections}
     institution, _ = Institution.objects.get_or_create(

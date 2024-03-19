@@ -13,7 +13,7 @@ class Command(BaseCommand):
                 name="Universidad Técnica Federico Santa María"
             )
             subject = {
-                "subject": "TEL-101",
+                "subject": "TEL101",
                 "section": "200",
             }
             CustomUser.objects.create_superuser(
