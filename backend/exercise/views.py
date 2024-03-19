@@ -996,7 +996,7 @@ class RankingPerSubjectView(APIView):
                 )
 
             enriched_attempts.sort(
-                key=lambda x: (-x["success_rate"], x["total_attempts"])
+                key=lambda x: (-x["total_score"], -x["exercises_completed"], -x["success_rate"])
             )
 
             for index, attempt in enumerate(enriched_attempts, start=1):
@@ -1109,7 +1109,7 @@ class RankingPerSubjectSectionView(APIView):
                 )
 
             enriched_attempts.sort(
-                key=lambda x: (-x["success_rate"], x["total_attempts"])
+                key=lambda x: (-x["total_score"], -x["exercises_completed"], -x["success_rate"])
             )
 
             for index, attempt in enumerate(enriched_attempts, start=1):
