@@ -174,7 +174,7 @@ class LoginUser(APIView):
     def post(self, request):
         email = request.data.get("email")
         password = request.data.get("password")
-
+        
         if email and password:
             user = authenticateUser(email=email, password=password)
             if not user:
@@ -225,6 +225,68 @@ class LoginUser(APIView):
 
         # Redirige al usuario con los tokens y user_data incluidos en el accessToken
         redirect_url = f"https://teloprogramo.cl/auth?accessToken={access_token}&refreshToken={refresh_token}"
+        return redirect(redirect_url)
+    
+    
+class LoginUserLocal(APIView):
+    parser_classes = [FormParser, JSONParser]
+
+    @transaction.atomic
+    @swagger_auto_schema(request_body=CustomTokenObtainSerializer)
+    def post(self, request):
+        email = request.data.get("email")
+        password = request.data.get("password")
+        
+        if email and password:
+            user = authenticateUser(email=email, password=password)
+            if not user:
+                return Response(
+                    {
+                        "error": "No se pudo autenticar con las credenciales proporcionadas."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            email = request.data.get("ext_user_username")
+            # Si no se proporcionaron email y password, usar la función para autenticar o crear el usuario
+            user = CustomUser.objects.filter(email=email).exists()
+
+            if not user:
+                user = authenticate_or_create_user(request.data)
+            else:
+                user = CustomUser.objects.get(email=email)
+
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+
+        access_token_payload = jwt.decode(
+            access_token, SECRET_KEY, algorithms=["HS256"]
+        )
+
+        user_serializer = CustomUser.objects.get(email=user.email)
+        user_data = {
+            "user_id": user_serializer.user_id,
+            "email": user_serializer.email,
+            "name": user_serializer.name,
+            "roles": [role.name for role in user_serializer.roles.all()],
+            "institution": (
+                user_serializer.institution.name if user_serializer.institution else ""
+            ),
+            "campus": user_serializer.campus if user_serializer.campus else "",
+            "picture": user_serializer.picture.url if user_serializer.picture else "",
+            "subject": user_serializer.subject,
+        }
+
+        if user_serializer.roles.filter(name="Student").exists():
+            student = Student.objects.get(user=user_serializer)
+            user_data["semester"] = student.semester
+
+        access_token_payload["user_data"] = user_data
+        access_token = jwt.encode(access_token_payload, SECRET_KEY, algorithm="HS256")
+
+        # Redirige al usuario con los tokens y user_data incluidos en el accessToken
+        redirect_url = f"http://localhost:3000/auth?accessToken={access_token}&refreshToken={refresh_token}"
         return redirect(redirect_url)
 
  

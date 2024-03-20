@@ -36,6 +36,9 @@ def authenticate_or_create_user(data):
 
     sections_str = context_title.split("Paralelos:")[1]
     sections = sections_str.split("/")
+
+
+
     sections = [section.strip() for section in sections]
 
     subject_info = {"subject": subject, "sections": sections}
@@ -69,3 +72,7 @@ def authenticate_or_create_user(data):
     user.save()
 
     return user
+
+
+
+

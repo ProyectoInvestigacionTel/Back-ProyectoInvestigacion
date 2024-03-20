@@ -10,6 +10,8 @@ urlpatterns = [
     path("user_id/<str:user_id>", UserIdView.as_view(), name="get_usuario"),
     # login con jwt
     path("token/", csrf_exempt(LoginUser.as_view()), name="token_obtain_pair"),
+    path("localtoken/", csrf_exempt(LoginUserLocal.as_view()), name="token_obtain_pair"),
+
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("original_token/", LoginUserToken.as_view(), name="logout"),
     path("add_coin/<str:user_id>", AddCoinView.as_view(), name="add_coin"),
