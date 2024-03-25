@@ -3,8 +3,7 @@ def generate_avatar_url(full_name):
         base_url = "https://ui-avatars.com/api/"
         name_parts = full_name.split(" ")
         
-        if len(name_parts) > 1:
-            formatted_name = name_parts[0] + " " + name_parts[-1]
+        formatted_name = name_parts[0] + " " + name_parts[-1]
 
         formatted_name = formatted_name.replace(".", " ").title()
         params = "?"
