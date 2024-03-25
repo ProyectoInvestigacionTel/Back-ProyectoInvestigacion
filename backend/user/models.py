@@ -78,7 +78,7 @@ class CustomUser(AbstractBaseUser):
         blank=True,
     )
     campus = models.CharField(max_length=100, null=True)
-    picture = models.ImageField(upload_to="user_photos/", null=True, blank=True)
+    picture = models.ImageField(upload_to="user_photos/", null=True, blank=True,max_length=255)
     subject = models.JSONField(null=True, blank=True)
 
     USERNAME_FIELD = "email"
