@@ -9,7 +9,7 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         users_without_picture = CustomUser.objects.filter(picture__isnull=True)
         for user in users_without_picture:
-            user.picture = generate_avatar_url(user.email)
+            user.picture = generate_avatar_url(user.name)
             user.save()
             self.stdout.write(
                 self.style.SUCCESS(f"Avatar actualizado para {user.email}")

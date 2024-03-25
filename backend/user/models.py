@@ -98,7 +98,7 @@ class CustomUser(AbstractBaseUser):
 
     def save(self, *args, **kwargs):
         if not self.picture:
-            self.picture = generate_avatar_url(self.email)
+            self.picture = generate_avatar_url(self.name)
         super(CustomUser, self).save(*args, **kwargs)
 
 
