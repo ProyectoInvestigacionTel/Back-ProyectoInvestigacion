@@ -12,9 +12,13 @@ def encode_code_to_base64(code: str) -> str:
 def correct_special_characters(code_str: str) -> str:
     return code_str.replace("'", '"')
 
+
 def generate_random_filename(prefix, suffix):
-    random_string = "".join(random.choices(string.ascii_lowercase + string.digits, k=10))
+    random_string = "".join(
+        random.choices(string.ascii_lowercase + string.digits, k=10)
+    )
     return f"/app/temp/{prefix}_{random_string}.{suffix}"
+
 
 def prepare_input_files(container, input_cases: list) -> list:
     input_filenames = []
@@ -24,12 +28,13 @@ def prepare_input_files(container, input_cases: list) -> list:
         input_content_base64 = base64.b64encode(input_content.encode()).decode()
 
         container.exec_run(
-            cmd=f'sh -c "echo {input_content_base64} | base64 --decode > {input_filename}"', user="appuser"
+            cmd=f'sh -c "echo {input_content_base64} | base64 --decode > {input_filename}"',
+            user="appuser",
         )
 
         input_filenames.append(input_filename)
         print(f"Input file {i} created: {input_filename}", flush=True)
-        print(f'Input content before base64: {input_content}', flush=True)
+        print(f"Input content before base64: {input_content}", flush=True)
 
     return input_filenames
 
@@ -39,8 +44,19 @@ def run_code_in_container(
 ) -> list:
     client = DockerClient.from_env()
     results = []
+    container_name = f"code_execution_{''.join(random.choices(string.ascii_lowercase + string.digits, k=6))}"
+
     try:
-        container = client.containers.get("run_code")
+        container = client.containers.run(
+            image="python:3.9-slim",
+            command="tail -f /dev/null",
+            name=container_name,
+            detach=True,
+            user="appuser",
+            mem_limit="100m",
+            auto_remove=True,
+        )
+
         input_filenames = prepare_input_files(container, input_cases)
 
         code_filename = generate_random_filename("code", "py")
@@ -67,11 +83,12 @@ def run_code_in_container(
             container.exec_run(cmd=f"rm {input_filename}", user="appuser")
 
         container.exec_run(cmd=f"rm {code_filename}", user="appuser")
+        container.remove(force=True)
     except NotFound:
-        return ["Error: Contenedor 'run_code' no encontrado."]
+        results.append("Error: Contenedor 'run_code' no encontrado.")
     except ContainerError as e:
-        return [f"Error en el contenedor: {str(e)}"]
+        results.append(f"Error en el contenedor: {str(e)}")
     except Exception as e:
-        return [f"Error inesperado: {str(e)}"]
+        results.append(f"Error inesperado: {str(e)}")
 
     return results
