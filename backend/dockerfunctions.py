@@ -48,7 +48,7 @@ def run_code_in_container(
     try:
         
         container = client.containers.run(
-            image="back-proyectoinvestigacion-run_code",
+            image="run_code",
             command="tail -f /dev/null",
             name=container_name,
             detach=True,
