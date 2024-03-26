@@ -28,8 +28,7 @@ def prepare_input_files(container, input_cases: list) -> list:
         input_content_base64 = base64.b64encode(input_content.encode()).decode()
 
         container.exec_run(
-            cmd=f'sh -c "echo {input_content_base64} | base64 --decode > {input_filename}"',
-            user="appuser",
+            cmd=f'sh -c "echo {input_content_base64} | base64 --decode > {input_filename}"',user="appuser"
         )
 
         input_filenames.append(input_filename)
@@ -47,14 +46,15 @@ def run_code_in_container(
     container_name = f"code_execution_{''.join(random.choices(string.ascii_lowercase + string.digits, k=6))}"
 
     try:
+        
         container = client.containers.run(
-            image="python:3.9-slim",
+            image="back-proyectoinvestigacion-run_code",
             command="tail -f /dev/null",
             name=container_name,
             detach=True,
-            user="appuser",
             mem_limit="100m",
             auto_remove=True,
+            user="appuser"
         )
 
         input_filenames = prepare_input_files(container, input_cases)
@@ -64,13 +64,11 @@ def run_code_in_container(
 
         container.exec_run(
             cmd=f'sh -c "echo {corrected_code_base64} | base64 --decode > {code_filename}"',
-            user="appuser",
         )
 
         for input_filename in input_filenames:
             exec_result = container.exec_run(
-                cmd=f"sh -c 'timeout {timeout_seconds} python {code_filename} < {input_filename}'",
-                user="appuser",
+                cmd=f"sh -c 'timeout {timeout_seconds} python {code_filename} < {input_filename}'",user="appuser"
             )
 
             if exec_result.exit_code == 0:
@@ -80,15 +78,13 @@ def run_code_in_container(
                     f"Error al ejecutar el código: {exec_result.output.decode('utf-8')}"
                 )
             results.append(result)
-            container.exec_run(cmd=f"rm {input_filename}", user="appuser")
+            container.exec_run(cmd=f"rm {input_filename}",user="appuser")
 
-        container.exec_run(cmd=f"rm {code_filename}", user="appuser")
+        container.exec_run(cmd=f"rm {code_filename}",user="appuser")
         container.remove(force=True)
-    except NotFound:
-        results.append("Error: Contenedor 'run_code' no encontrado.")
     except ContainerError as e:
-        results.append(f"Error en el contenedor: {str(e)}")
+        return [f"Error en el contenedor: {str(e)}"]
     except Exception as e:
-        results.append(f"Error inesperado: {str(e)}")
+        return [f"Error inesperado: {str(e)}"]
 
     return results

@@ -1,5 +1,5 @@
 
-FROM python:3.9
+FROM python:3.9-slim
 
 # Crea un grupo 'appgroup' y un usuario 'appuser'
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser

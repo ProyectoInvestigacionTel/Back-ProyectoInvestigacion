@@ -1,6 +1,7 @@
 from teloprogramo.settings import SECRET_KEY
 from .aux_func_views import (
     authenticate_or_create_user,
+    read_excel_and_update_users,
 )
 from drf_yasg import openapi
 from .models import CustomUser, Teacher, Student, Rol
@@ -27,6 +28,7 @@ from django.shortcuts import redirect
 import jwt
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.core.files.storage import default_storage
 
 
 class PostStudentView(APIView):
@@ -428,3 +430,30 @@ class UserPhotoView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+
+class UpdateUsersFromExcel(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                "file",
+                in_=openapi.IN_FORM,
+                description="Archivo excel alumnos",
+                type=openapi.TYPE_FILE,
+                required=True,
+            ),
+        ],
+    )
+    def post(self, request, *args, **kwargs):
+        excel_file = request.FILES["file"]
+        if excel_file is None:
+            return Response({'error': 'No se proporcionó ningún archivo.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        
+        try:
+            read_excel_and_update_users(excel_file)
+            
+            
+            return Response({'message': 'Usuarios actualizados con éxito desde el archivo Excel.'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

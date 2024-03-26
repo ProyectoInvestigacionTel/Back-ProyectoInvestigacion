@@ -2,7 +2,7 @@ import random
 import string
 from institution.models import Institution
 from datetime import datetime
-
+import pandas as pd
 from user.models import CustomUser, Rol, Student, Teacher
 from django.contrib.auth import get_user_model
 
@@ -36,8 +36,6 @@ def authenticate_or_create_user(data):
 
     sections_str = context_title.split("Paralelos:")[1]
     sections = sections_str.split("/")
-
-
 
     sections = [section.strip() for section in sections]
 
@@ -74,5 +72,43 @@ def authenticate_or_create_user(data):
     return user
 
 
+def read_excel_and_update_users(excel_file):
+    df = pd.read_excel(excel_file, header=None, skiprows=8)
+    df.columns = [
+        "N°",
+        "ROL USM",
+        "DV",
+        "RUT",
+        "DV",
+        "Ap.Paterno",
+        "Ap.Materno",
+        "Nombres",
+        "VTR",
+        "Carrera",
+        "Correo",
+    ]
 
+    asignatura_info_row = pd.read_excel(
+        excel_file, header=None, nrows=1, skiprows=2
+    ).iloc[0, 0]
+    asignatura_info = str(asignatura_info_row)
+    subject_code = asignatura_info.split(":")[1].split("-")[0].strip()
 
+    paralelo_info_row = pd.read_excel(
+        excel_file, header=None, nrows=1, skiprows=3
+    ).iloc[0, 0]
+    section = str(paralelo_info_row).split(":")[1].strip()
+    print(f"Subject: {subject_code}, Section: {section}", flush=True)
+    for index, student_info in df.iterrows():
+        if pd.isnull(student_info["Correo"]):
+            continue
+
+        email = student_info["Correo"]
+        print(f"Updating user with email {email}", flush=True)
+        try:
+            user = CustomUser.objects.get(email=email)
+
+            user.subject = {"subject": subject_code, "sections": [section]}
+            user.save()
+        except CustomUser.DoesNotExist:
+            print(f"No se encontró el usuario con email {email}")

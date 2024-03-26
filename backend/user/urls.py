@@ -19,4 +19,6 @@ urlpatterns = [
     path("remove_coins/<str:user_id>", RemoveCoinView.as_view(), name="remove_coin"),
     path("upload-picture/", UserPhotoUploadView.as_view(), name="upload-picture"),
     path("get-picture/<str:user_id>", UserPhotoView.as_view(), name="get-picture"),
+    path('update-users-from-excel/', UpdateUsersFromExcel.as_view(), name='update-users-from-excel'),
 ]
+

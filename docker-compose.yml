@@ -47,6 +47,7 @@ services:
     ports:
       - "5432:5432"
   run_code:
+    image: run_code
     build: ./backend/run_code
     container_name: run_code
     volumes:
