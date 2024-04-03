@@ -28,7 +28,8 @@ def prepare_input_files(container, input_cases: list) -> list:
         input_content_base64 = base64.b64encode(input_content.encode()).decode()
 
         container.exec_run(
-            cmd=f'sh -c "echo {input_content_base64} | base64 --decode > {input_filename}"',user="appuser"
+            cmd=f'sh -c "echo {input_content_base64} | base64 --decode > {input_filename}"',
+            user="appuser",
         )
 
         input_filenames.append(input_filename)
@@ -46,7 +47,7 @@ def run_code_in_container(
     container_name = f"code_execution_{''.join(random.choices(string.ascii_lowercase + string.digits, k=6))}"
 
     try:
-        
+
         container = client.containers.run(
             image="run_code",
             command="tail -f /dev/null",
@@ -54,7 +55,7 @@ def run_code_in_container(
             detach=True,
             mem_limit="100m",
             auto_remove=True,
-            user="appuser"
+            user="appuser",
         )
 
         input_filenames = prepare_input_files(container, input_cases)
@@ -68,7 +69,8 @@ def run_code_in_container(
 
         for input_filename in input_filenames:
             exec_result = container.exec_run(
-                cmd=f"sh -c 'timeout {timeout_seconds} python {code_filename} < {input_filename}'",user="appuser"
+                cmd=f"sh -c 'timeout {timeout_seconds} python {code_filename} < {input_filename}'",
+                user="appuser",
             )
 
             if exec_result.exit_code == 0:
@@ -78,13 +80,22 @@ def run_code_in_container(
                     f"Error al ejecutar el código: {exec_result.output.decode('utf-8')}"
                 )
             results.append(result)
-            container.exec_run(cmd=f"rm {input_filename}",user="appuser")
+            container.exec_run(cmd=f"rm {input_filename}", user="appuser")
 
-        container.exec_run(cmd=f"rm {code_filename}",user="appuser")
-        container.remove(force=True)
+        container.exec_run(cmd=f"rm {code_filename}", user="appuser")
     except ContainerError as e:
         return [f"Error en el contenedor: {str(e)}"]
     except Exception as e:
         return [f"Error inesperado: {str(e)}"]
+    finally:
+
+        if container:
+            try:
+                container.remove(force=True)
+                print(f"Contenedor {container_name} eliminado con éxito.")
+            except Exception as e:
+                print(
+                    f"Error al intentar eliminar el contenedor {container_name}: {str(e)}"
+                )
 
     return results
